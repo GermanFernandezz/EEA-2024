@@ -33,7 +33,7 @@ A continuación cargamos la librería a nuestro ambiente. Para ello debe estar p
 
 ```{r, message=FALSE, warning=FALSE}
 library(tidyverse)
-library(lubridate) # para trabajar con fechas
+#library(lubridate) # para trabajar con fechas, ya está integrado a tidyverse
 ```
 
 ![](tidyverse.png){width=800}
@@ -57,9 +57,9 @@ Datos <- data.frame(INDICE, FECHA, GRUPO)
 Datos
 ```
 
-## Dplyr
+## Dplyr (Deployer)
 
-El caracter principal para utilizar este paquete es ```%>%``` , _pipe_ (de tubería).
+El caracter principal para utilizar este paquete es ```%>%``` , _pipe_ (de tubería). ("Ctrl+Shif+M" pone el pipe directamente)
 
 Los ```%>%``` toman el set de datos a su izquierda, y los transforman mediante los comandos a su derecha, en los cuales los elementos de la izquierda están implícitos. En otros términos.
 
@@ -92,6 +92,7 @@ Permite filtrar la tabla acorde al cumplimiento de condiciones lógicas
 ```{r}
 Datos %>% 
   filter(INDICE > 400 , GRUPO == "Privado_Registrado")
+#AND: Acá puedo usar "," o &, son equivalentes
 ```
 
 Nótese que en este caso al separar con una (coma) `,` las condiciones se exige el cumplimiento de ambas. En caso de desear que se cumpla una sola condición debe utilizarse el caracter `|` (una condición "o" la otra).
@@ -208,6 +209,8 @@ Datos %>%
 Esta función permite realizar operaciones de forma agrupada. Lo que hace la función es "separar" a la tabla según los valores de la variable indicada y realizar las operaciones que se especifican a continuación, de manera independiente para cada una de las "subtablas". 
 
 En nuestro ejemplo, sería útil para calcular el promedio de los indices por _Fecha_. 
+
+Si quiero crear mas variables dentro de summarise separo por coma cada una.
 
 ```{r}
 Datos %>% 
