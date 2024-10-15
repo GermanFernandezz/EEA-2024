@@ -1,0 +1,66 @@
+---
+title: "Extensiones del Modelo Regresión Lineal Múltiple"
+author: "Juan Barriola, Azul Villanueva y Franco Mastelli"
+date: "01 de Octubre de 2022"
+output:
+  html_document:
+    toc: yes
+    code_folding: show
+    toc_float: yes
+    df_print: paged
+    theme: united
+    code_download: yes
+  html_notebook:
+    theme: spacelab
+    toc: yes
+    toc_float: yes
+    df_print: paged
+---
+
+<style type="text/css">
+div.main-container {
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+```{r, echo=FALSE}
+options(scipen = 8)
+```
+
+```{r, warning=F, message=F}
+library(tidyverse)
+library(tidymodels)
+library(gridExtra)
+library(GGally)
+library(corrplot)
+library(corrr)
+library(gridExtra)
+library(MASS)
+library(kableExtra)
+```
+
+## Introducción
+
+
+
+
+```{r}
+#Cargo los datos
+datos <- read.csv("eph_train_2023.csv")
+```
+
+
+## Análisis Exploratorio de datos
+
+
+
+```{r}
+#Variables numericas----
+#Estructura de los datos
+datos %>% glimpse()
+#Quito años, trimesrte y fecha de nacimiento que no los voy a usar
+datos %>% colnames()
+```
+
