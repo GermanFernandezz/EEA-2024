@@ -1,73 +1,34 @@
----
-title: "Extensiones del Modelo Regresión Lineal Múltiple"
-author: "Juan Barriola, Azul Villanueva y Franco Mastelli"
-date: "01 de Octubre de 2022"
-output:
-  html_document:
-    toc: yes
-    code_folding: show
-    toc_float: yes
-    df_print: paged
-    theme: united
-    code_download: yes
-  html_notebook:
-    theme: spacelab
-    toc: yes
-    toc_float: yes
-    df_print: paged
----
-
-<style type="text/css">
-div.main-container {
-  max-width: 1600px;
-  margin-left: auto;
-  margin-right: auto;
-}
-</style>
-
-```{r, echo=FALSE}
-options(scipen = 8)
-```
-
-```{r, warning=F, message=F}
+#Librerias
 library(tidyverse)
 library(tidymodels)
-library(gridExtra)
 library(GGally)
 library(corrplot)
 library(corrr)
 library(gridExtra)
 library(MASS)
-library(kableExtra)
-library(janitor)
-```
-
-## Introducción
 
 
 
+#Directorio de trabajo
+setwd("D:/MaestriaDataMining/EEA2024/TP")
 
-```{r}
 #Cargo los datos
 datos <- read.csv("eph_train_2023.csv")
-```
 
+#1)Analisis exploratorio----
 
-## Análisis Exploratorio de datos
-
-
-
-```{r}
-#Variables numericas----
 #Estructura de los datos
 datos %>% glimpse()
+datos %>% str()
 #Quito años, trimesrte y fecha de nacimiento que no los voy a usar
+datos %>% colnames()
 datos <- datos[-c(2,3,6)]
+
+#Paso a factor algunas variables que originalmente son numericas pero en realidad son categoricas
 datos$aglomerado <- as.factor(datos$aglomerado)
 datos$codigo_actividad <- as.factor(datos$codigo_actividad)
-```
 
-```{r}
+#Verifico valores úncios y valores faltantes
 tabla_exploratorios =  datos %>%
   gather(., 
          key = "variables", 
@@ -77,13 +38,10 @@ tabla_exploratorios =  datos %>%
             porcentaje_faltantes = sum(is.na(valores))/nrow(datos)*100) %>% 
   arrange(desc(porcentaje_faltantes), valores_unicos) # ordenamos por porcentaje de faltantes y valores unicos
 tabla_exploratorios
+
 #Saco ese único NA
 datos <- subset(datos, !is.na(asistencia_educacion))
-```
 
-
-```{r}
-# Boxplots de variables categorias que puedo utilizar en modelos
 g1 <- ggplot(datos, aes(x=region, fill=region))+
   geom_bar()+
   theme_bw()+
@@ -123,18 +81,14 @@ g4 <- ggplot(datos, aes(x=categoria_ocupacion, fill=categoria_ocupacion))+
   scale_x_discrete(labels = c("Trabajador sin remuneracion" = "Sin salario"))
 # grafico todos juntos
 grid.arrange(g1, g2, g3, g4, nrow = 2)
-```
 
-```{r}
 #Grafico de correlaciones
 grafico1 <- datos %>%
   select_if(is.numeric) %>%
   ggpairs()
 
 grafico1
-```
 
-```{r}
 m_cor <- datos %>%
   select_if(is.numeric) %>%
   cor()
@@ -142,18 +96,17 @@ corrplot(m_cor,
          method="circle",
          type = "upper",
          addCoef.col = "black",
-         diag= FALSE) 
-```
+         diag= FALSE)  
 
-```{r}
+
+#Correlacion de Spearman
 datos %>% 
   select_if(is.numeric) %>% # selecciona las variables numericas 
   correlate(method = 'spearman') %>% # convierte la matriz de corr en dataframe
   shave() %>% # solo muestra información debajo de la diagonal principal
   fashion(decimals = 3) # acomoda los datos en forma tidy (por ej. redondeo de decimales)
-```
 
-```{r}
+#Apertura por sexo
 grafico2 <- datos %>% 
   select_if(is.numeric) %>% 
   mutate(sexo = datos$sexo) %>%
@@ -163,30 +116,38 @@ grafico2 <- datos %>%
   theme(axis.text.x = element_text(angle=45, vjust=0.5), legend.position = "bottom")
 
 grafico2 #no veo inconsistencias severas en este gráfico
-```
 
-```{r}
+
 #2)Modelos lineales experiencia----
 ggplot(datos, aes(x=experiencia_potencial, y= salario_horario))+
   geom_point()+
   theme_bw()
-```
 
-```{r}
 #No parece una relación muy lineal pero miremos el modelo: salario_horario vs exp_pot
 modelo_simple_salhor_hr = lm(formula = salario_horario ~ experiencia_potencial, data = datos)
 # Observamos que devuelve el modelo
-tidy(modelo_simple_salhor_hr, conf.int = T)
-```
+modelo_simple_salhor_hr
 
-```{r}
+# Accedemos a la información de los coeficientes estimados
+intercepto = modelo_simple_salhor_hr$coefficients[1]
+pendiente = modelo_simple_salhor_hr$coefficients[2]
+
+nuevo_x <- data.frame(experiencia_potencial=6)
+predict(modelo_simple_salhor_hr,nuevo_x)
+
+
 #Modelo salario_horario vs exp_pot + exp_pot^2
 modelo_multiple_salhr_hr = lm(formula = salario_horario ~ experiencia_potencial + I(experiencia_potencial^2), data = datos)
 # Observamos que devuelve el modelo
-tidy(modelo_multiple_salhr_hr, conf.int = T)
-```
+modelo_multiple_salhr_hr
 
-```{r}
+#Modelo salario_horario vs exp_pot + exp_pot^2 pero haciendo la nueva variable
+datos$experiencia_potencial_cuad <- datos$experiencia_potencial^2
+modelo_multiple_salhr_hr_bis = lm(formula = salario_horario ~ experiencia_potencial + experiencia_potencial_cuad , data = datos)
+# Observamos que devuelve el modelo
+modelo_multiple_salhr_hr_bis
+
+
 # Graficamos el dataset y los modelos
 datos %>% ggplot(., aes(x = experiencia_potencial, y = salario_horario)) + 
   geom_point(color="grey") + #capa de los datos
@@ -197,21 +158,30 @@ datos %>% ggplot(., aes(x = experiencia_potencial, y = salario_horario)) +
   #scale_x_continuous(limits = c(0,65)) +
   #scale_y_continuous(limits = c(0,550000)) +
   labs(title="Modelo Lineal Simple: Salario Horario", x="Exp. Pot.", y="Salario Hora") 
-```
 
-```{r}
+
+
+summary(modelo_simple_salhor_hr)
+summary(modelo_multiple_salhr_hr)
+summary(modelo_multiple_salhr_hr_bis)
+
+tidy(modelo_simple_salhor_hr, conf.int = T)
+tidy(modelo_multiple_salhr_hr, conf.int = T)
+
+glance(modelo_simple_salhor_hr)
+glance(modelo_multiple_salhr_hr)
+
+plot(modelo_simple_salhor_hr)
+plot(modelo_multiple_salhr_hr)
+
+
 df_predicciones <- data.frame(experiencia_potencial=c(6,7,35,36))
 df_predicciones$predicciones <- predict(modelo_multiple_salhr_hr,df_predicciones)
 
 experiencia_6 <- df_predicciones$predicciones[2] - df_predicciones$predicciones[1]
 experiencia_35 <- df_predicciones$predicciones[4] - df_predicciones$predicciones[3]
 
-experiencia_6
-experiencia_35
-```
 
-
-```{r}
 #3) Modelo lineal multiple----
 datos$sexo <- factor(datos$sexo)
 
@@ -221,28 +191,35 @@ modelo_mincer1 <- lm(formula = salario_horario ~ educacion +
                        sexo +
                        sexo:educacion,
                      data=datos)
-tidy(modelo_mincer1, conf.int = T)
-```
 
-```{r}
+
+modelo_mincer1
+#Interpretación: Este es el coeficiente de la interacción entre educacion y sexoVaron. Indica que el 
+#efecto de la educación sobre el salario es ligeramente menor para los hombres que para las mujeres. 
+#En concreto, por cada año adicional de educación, los hombres reciben aproximadamente 6.44 unidades 
+#menos de salario horario comparado con las mujeres.
+
+summary(modelo_mincer1)
+#Menos educacion:varon, el resto de las variables son significativas para explicar salario_horario
 tidy(anova(modelo_mincer1))
-```
+#La variable sexo resulta significativa para explicar el salario_horario. No así la variable educacion:sexo
+#El modelo en su totatlidad tiene una variable que sirve para predecir el salario_horario
+#El modelo explica un 16.7% de variabilidad
 
-```{r}
 tidy_mincer1 <- tidy(modelo_mincer1, conf.int = TRUE) %>% arrange(p.value)
 tidy_mincer1
-```
 
-```{r}
 ggplot(tidy_mincer1, aes(estimate, term, xmin = conf.low, xmax = conf.high, height = 0)) +
   geom_point(color = "forestgreen",size=2) +
   geom_vline(xintercept = 0, lty = 4, color = "black") +
   geom_errorbarh(color = "forestgreen", size=1) +
   theme_bw() +
   labs(y = "Coeficientes β", x = "Estimación")
-```
 
-```{r}
+#Graficos de R base para ver si cumple supuestos de normalidad
+plot(modelo_mincer1)
+
+#Uso augment para calcular las variables necesarios para hacer los gráficos con ggplot
 datos_augmentados <- augment(modelo_mincer1)
 
 g1 = ggplot(datos_augmentados, aes(.fitted, .resid)) +
@@ -270,33 +247,35 @@ g4 = ggplot(datos_augmentados, aes(.hat, .std.resid)) +
   labs(title = "Residual vs leverage")
 # grafico todos juntos
 grid.arrange(g1, g2, g3, g4, nrow = 2)
-```
 
-```{r}
+
+#4)Modelo de Mincer enriquecido----
 modelo_mincer2 <- lm(formula = log(salario_horario) ~ educacion + 
                        experiencia_potencial + 
                        I(experiencia_potencial^2) +
                        sexo +
                        sexo:educacion,
                      data=datos)
-tidy(anova(modelo_mincer2))
-```
 
-```{r}
+modelo_mincer2
+
+summary(modelo_mincer2)
+
+tidy(anova(modelo_mincer2))
+
 tidy_mincer2 <- tidy(modelo_mincer2, conf.int = TRUE) %>% arrange(p.value)
 tidy_mincer2
-```
 
-```{r}
 ggplot(tidy_mincer2, aes(estimate, term, xmin = conf.low, xmax = conf.high, height = 0)) +
   geom_point(color = "forestgreen",size=2) +
   geom_vline(xintercept = 0, lty = 4, color = "black") +
   geom_errorbarh(color = "forestgreen", size=1) +
   theme_bw() +
   labs(y = "Coeficientes β", x = "Estimación")
-```
 
-```{r}
+#Graficos de R base para ver si cumple supuestos de normalidad
+plot(modelo_mincer2)
+
 #Uso augment para calcular las variables necesarios para hacer los gráficos con ggplot
 datos_augmentados <- augment(modelo_mincer2)
 
@@ -325,9 +304,8 @@ g4 = ggplot(datos_augmentados, aes(.hat, .std.resid)) +
   labs(title = "Residual vs leverage")
 # grafico todos juntos
 grid.arrange(g1, g2, g3, g4, nrow = 2)
-```
 
-```{r}
+
 # Predicciones en el logaritmo del salario
 pred_log_salario <- predict(modelo_mincer2)
 
@@ -341,9 +319,7 @@ salario_observado <- datos$salario_horario
 r2_salario <- 1 - sum((salario_observado - pred_salario)^2) / sum((salario_observado - mean(salario_observado))^2)
 
 print(r2_salario)
-```
 
-```{r}
 #5)Modelos propios y evaluacion----
 
 #Modelo propio 1----
@@ -351,16 +327,10 @@ modelo_propio1 <- lm(formula = log(salario_horario) ~ educacion +
                                      region +
                                      experiencia_potencial,
                                    data = datos)
-tidy(anova(modelo_propio1))
-```
-
-```{r}
-tidy_modelo_propio1 <- tidy(modelo_propio1, conf.int = TRUE) %>% arrange(p.value)
-tidy_modelo_propio1
-```
 
 
-```{r}
+summary(modelo_propio1)
+
 #Uso augment para calcular las variables necesarios para hacer los gráficos con ggplot
 datos_augmentados <- augment(modelo_propio1)
 
@@ -389,9 +359,8 @@ g4 = ggplot(datos_augmentados, aes(.hat, .std.resid)) +
   labs(title = "Residual vs leverage")
 # grafico todos juntos
 grid.arrange(g1, g2, g3, g4, nrow = 2)
-```
 
-```{r}
+
 # Predicciones en el logaritmo del salario
 pred_log_salario <- predict(modelo_propio1)
 
@@ -404,24 +373,16 @@ salario_observado <- datos$salario_horario
 # Calcular el R^2 corregido
 r2_salario <- 1 - sum((salario_observado - pred_salario)^2) / sum((salario_observado - mean(salario_observado))^2)
 
-print(r2_salario) 
-```
+print(r2_salario)  
 
-```{r}
+
 #Modelo propio 2----
 modelo_propio2 <- lm(formula = log(salario_horario) ~ edad/experiencia_potencial +
                                      sexo:experiencia_potencial + tipo_establecimiento,
                      data = datos)
-tidy(anova(modelo_propio2))
-```
 
-```{r}
-tidy_modelo_propio2 <- tidy(modelo_propio2, conf.int = TRUE) %>% arrange(p.value)
-tidy_modelo_propio2
-```
+summary(modelo_propio2)
 
-
-```{r}
 #Uso augment para calcular las variables necesarios para hacer los gráficos con ggplot
 datos_augmentados <- augment(modelo_propio2)
 
@@ -450,9 +411,8 @@ g4 = ggplot(datos_augmentados, aes(.hat, .std.resid)) +
   labs(title = "Residual vs leverage")
 # grafico todos juntos
 grid.arrange(g1, g2, g3, g4, nrow = 2)
-```
 
-```{r}
+
 # Predicciones en el logaritmo del salario
 pred_log_salario <- predict(modelo_propio1)
 
@@ -465,10 +425,10 @@ salario_observado <- datos$salario_horario
 # Calcular el R^2 corregido
 r2_salario <- 1 - sum((salario_observado - pred_salario)^2) / sum((salario_observado - mean(salario_observado))^2)
 
-print(r2_salario)
-```
+print(r2_salario)  
 
-```{r}
+
+
 #testeo----
 test <- read.csv("eph_test_2023.csv")
 
@@ -482,27 +442,85 @@ pred_modelo_mincer2$exp_fitted <- exp(pred_modelo_mincer2$.fitted)
 
 pred_modelo_propio2 <- augment(modelo_propio2, newdata = test)
 pred_modelo_propio2$exp_fitted <- exp(pred_modelo_propio2$.fitted)
-library(janitor)
-# Calcular las métricas
-metrics <- tibble(
-  Model = c("Modelo Propio 1", "Modelo Mincer 1", "Modelo Mincer 2", "Modelo Propio 2"),
-  RMSE = c(
-    rmse(data = pred_modelo_propio1, truth = salario_horario, estimate = exp_fitted)$.estimate,
-    rmse(data = pred_modelo_mincer1, truth = salario_horario, estimate = .fitted)$.estimate,
-    rmse(data = pred_modelo_mincer2, truth = salario_horario, estimate = exp_fitted)$.estimate,
-    rmse(data = pred_modelo_propio2, truth = salario_horario, estimate = exp_fitted)$.estimate
-  ),
-  MAE = c(
-    mae(data = pred_modelo_propio1, truth = salario_horario, estimate = exp_fitted)$.estimate,
-    mae(data = pred_modelo_mincer1, truth = salario_horario, estimate = .fitted)$.estimate,
-    mae(data = pred_modelo_mincer2, truth = salario_horario, estimate = exp_fitted)$.estimate,
-    mae(data = pred_modelo_propio2, truth = salario_horario, estimate = exp_fitted)$.estimate
-  )
-)
 
-# Opcional: Limpiar los nombres de las columnas
-metrics <- clean_names(metrics)
+rmse(data=pred_modelo_propio1, truth = salario_horario, estimate=exp_fitted)
+rmse(data=pred_modelo_mincer1, truth = salario_horario, estimate=.fitted)
+rmse(data=pred_modelo_mincer2, truth = salario_horario, estimate=exp_fitted)
+rmse(data=pred_modelo_propio2, truth = salario_horario, estimate=exp_fitted)
 
-# Mostrar la tabla
-print(metrics)
-```
+mae(data=pred_modelo_propio1, truth = salario_horario, estimate=exp_fitted)
+mae(data=pred_modelo_mincer1, truth = salario_horario, estimate=.fitted)
+mae(data=pred_modelo_mincer2, truth = salario_horario, estimate=exp_fitted)
+mae(data=pred_modelo_propio2, truth = salario_horario, estimate=exp_fitted)
+
+
+
+#6) Modelo lineal robusto----
+# cargo datos train con outliers
+
+train <- read.csv("eph_train_outliers_2023.csv")
+train <- train[-c(2,3,6)]
+
+datos$tipo <- "sin_outliers"
+train$tipo <- "con_outliers"
+prueba <- rbind(datos, train)
+
+ggplot(data = prueba, aes(y = salario_horario, group = tipo, fill = tipo)) +
+  geom_boxplot() + 
+  scale_fill_brewer(palette="Dark2") +
+  theme_bw() +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(title = "Boxplots de salario por hora trabajada", subtitle = "En pesos") +
+  labs(y = "Salario por hora en pesos") +
+  labs(x = "") +
+  facet_wrap(~tipo)
+
+
+train %>% 
+  select_if(is.numeric) %>% 
+  mutate(sexo = train$sexo) %>%
+  ggpairs(., mapping = aes(colour = sexo), title = "Matriz de correlaciones",
+          upper = list(continuous = wrap("cor", size = 3, hjust=0.5)), legend = 25) + 
+  theme_bw() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5), legend.position = "bottom")
+
+
+modelo_mincer1_outliers <- lm(formula = salario_horario ~ educacion + 
+                               experiencia_potencial + 
+                               I(experiencia_potencial^2) +
+                               sexo +
+                               sexo:educacion,
+                             data=train)
+
+modelo_mincer1_robusto_outliers <- rlm(formula = salario_horario ~ educacion + 
+                       experiencia_potencial + 
+                       I(experiencia_potencial^2) +
+                       sexo +
+                       sexo:educacion,
+                     data=train)
+
+modelo_mincer2_outliers <- lm(formula = log(salario_horario) ~ educacion + 
+                                experiencia_potencial + 
+                                I(experiencia_potencial^2) +
+                                sexo +
+                                sexo:educacion,
+                              data=train)
+
+
+pred_modelo_mincer1_outliers <- augment(modelo_mincer1_outliers, newdata = test)
+
+pred_modelo_mincer1_outliers_robusto <- augment(modelo_mincer1_robusto_outliers, newdata = test)
+
+pred_modelo_mincer2_outliers <- augment(modelo_mincer2_outliers, newdata = test)
+pred_modelo_mincer2_outliers$exp_fitted <- exp(pred_modelo_mincer2_outliers$.fitted)
+
+
+rmse(data=pred_modelo_mincer1_outliers, truth = salario_horario, estimate=.fitted)
+rmse(data=pred_modelo_mincer1_outliers_robusto, truth = salario_horario, estimate=.fitted)
+rmse(data=pred_modelo_mincer2_outliers, truth = salario_horario, estimate=exp_fitted)
+
+mae(data=pred_modelo_mincer1_outliers, truth = salario_horario, estimate=.fitted)
+mae(data=pred_modelo_mincer1_outliers_robusto, truth = salario_horario, estimate=.fitted)
+mae(data=pred_modelo_mincer2_outliers, truth = salario_horario, estimate=exp_fitted)
+
