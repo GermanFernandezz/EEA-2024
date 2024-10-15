@@ -1,0 +1,57 @@
+---
+title: "Enfoque Estadístico del Aprendizaje"
+author: "J. Germán Fernández"
+date: "19-10-2024"
+output: 
+  html_document:
+    toc: yes
+    code_folding: show
+    toc_float: yes
+    df_print: paged
+    theme: united
+    code_download: yes
+subtitle: Trabajo Práctico Nº1
+---
+
+```{r r1, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#Librerias
+library(tidyverse)
+library(tidymodels)
+library(lubridate)
+library(GGally)
+library(corrplot)
+library(corrr)
+library(gridExtra)
+library(MASS)
+library(kableExtra)
+#Directorio de trabajo
+setwd("/Users/jorgefernandez/Documents/Cienciadedatos/EEA2024/TP")
+options(scipen = 999)
+```
+
+
+## Introducción
+
+
+
+
+```{r r11}
+#Cargo los datos
+datos <- read.csv("eph_train_2023.csv")
+```
+
+
+## Análisis Exploratorio de datos
+
+
+```{r r2}
+#Variables numericas----
+#Estructura de los datos
+datos %>% glimpse()  %>%  knitr::kable(format = "html") |> 
+  kable_styling() 
+datos %>% str()
+#Quito años, trimesrte y fecha de nacimiento que no los voy a usar
+datos %>% colnames()
+```
+
