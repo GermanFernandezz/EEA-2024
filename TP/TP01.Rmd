@@ -30,7 +30,7 @@ div.main-container {
 options(scipen = 8)
 ```
 
-```{r, warning=F, message=F}
+```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 library(tidymodels)
 library(gridExtra)
@@ -41,6 +41,7 @@ library(gridExtra)
 library(MASS)
 library(kableExtra)
 library(janitor)
+library(broom)
 ```
 
 # Introducción
@@ -200,7 +201,7 @@ grafico2 #no veo inconsistencias severas en este gráfico
 
 ## Primero modelo lineal
 
-El primer modelo lineal consiste en explicar el Salario por Hora según la variable Eperiencia Potencial.
+El primer modelo lineal consiste en explicar el Salario por Hora según la variable Experiencia Potencial.
 
 Primero graficamos las dos variables.
 
@@ -220,7 +221,7 @@ E(SalarioHorario) = β0 + β1*ExperienciaPotencial
 
 ### Evaluacion del primer modelo lineal simple
 
-Con este modelo queremos inferir β1 y verificar si la relacion entre la variable independiente y la variable a explicar es estadísticamente significativa mediantes el siguiente test de hiótesis:
+Con este modelo queremos inferir β1 y verificar si la relacion entre la variable independiente y la variable a explicar es estadísticamente significativa mediante el siguiente test de hipótesis:
 
 H0: β1=0
  
@@ -239,7 +240,7 @@ Sin embargo, este modelo explica solo un 0,1% de la variabilidad.
 
 ### Diagnóstico del primer modelo lineal simple
 
-Se realiza el diagnóstico para verificar si los errores tienenn una distrbución normal centrada en cero y de varianza constante.
+Se realiza el diagnóstico para verificar si los errores tienen una distrbución normal centrada en cero y de varianza constante.
 
 ```{r}
 datos_augmentados <- augment(modelo_simple_salhor_hr)
@@ -275,7 +276,7 @@ Normal Q-Q plot: claramente los errores no son normales ya que en ambos extremos
 
 Residuos vs leverage: tomando como referencia que los datos con leverage mayor a 0,5 serían los potencialmente influyentes, podemos decir que ninguno cumple con esta función.
 
-## Segundo Modelo Lineal
+## Primero Modelo Lineal mútiple
 
 Ajustamos otro modelo un poco mas complejo:
 
@@ -283,7 +284,7 @@ E(SalarioHorario) = β0 + β1*Experiencia Potencial + β2*$Experiencia Potencial
 
 Este modelo puede que sea mas explicativo de la disminución que se observa gráficamente del Salario por Hora a partir de una determinada Experiencia Potencial.
 
-### Evaluacion del segundo modelo lineal
+### Evaluacion del primer modelo lineal multiple
 
 ```{r}
 #Modelo salario_horario vs exp_pot + exp_pot^2
@@ -297,7 +298,7 @@ En este modelo vamos que el p-valor de ambos coeficientes es menor a 0,05, por l
 
 Este modelo también explica un poco mejor la variabilidad, explicando un 1,2%, pero sigue siendo bastante bajo.
 
-Veamos este comportamiento graficando las curvas de ambos modelos, donde la curva roja es el modelo mas simple y la curva el mas complejo.
+Veamos este comportamiento graficando las curvas de ambos modelos, donde la curva verde es el modelo mas simple y la roja el mas complejo.
 
 
 ```{r}
@@ -314,7 +315,7 @@ datos %>% ggplot(., aes(x = experiencia_potencial, y = salario_horario)) +
 ```
 En este gráfico se puede observar como la curva del modelo mas complejo tiene un máximo a los 30 años aproximados de experiencia potencial y comienza a declinar.
 
-Veamos este comportamiento tamando como varía un año mas de experiencia laboral si se tienen 6 años de experiencia potencial o 35 años de experiencia potencial.
+Veamos este comportamiento tomando como varía un año mas de experiencia laboral si se tienen 6 años de experiencia potencial o 35 años de experiencia potencial.
 
 ```{r}
 df_predicciones <- data.frame(experiencia_potencial=c(6,7,35,36))
@@ -334,7 +335,7 @@ cat("Variación del salario con un año de mas de experiencia si se tienen 35 a�
 
 ### Diagnóstico del primer modelo lineal simple
 
-Se realiza el diagnóstico para verificar si los errores tienenn una distrbución normal centrada en cero y de varianza constante.
+Se realiza el diagnóstico para verificar si los errores tienen una distrbución normal centrada en cero y  varianza constante.
 
 ```{r}
 datos_augmentados <- augment(modelo_multiple_salhr_hr)
@@ -392,7 +393,7 @@ modelo_mincer1 <- lm(formula = salario_horario ~ educacion +
 summary(modelo_mincer1, conf.int = T)
 ```
 
-Sobre la significancia indivudual de cada coeficiente podemos decir que todos significativos, salvo cuando condicionamos la variable educación a sexo, donde no es significativa para explicar el Salario por hora.
+Sobre la significancia indivudual de cada coeficiente podemos decir que todos son significativos, salvo cuando condicionamos la variable educación a sexo, donde no es significativa para explicar el Salario por hora.
 
 El test F de significatividad global es menor a 0,05, por lo tanto podemos asegurar que por lo menos una de las variables regresoreas sirve para predecir el Salario por hora.
 
@@ -440,7 +441,7 @@ g4 = ggplot(datos_augmentados, aes(.hat, .std.resid)) +
 grid.arrange(g1, g2, g3, g4, nrow = 2)
 ```
 
-Nuevamente vemos que no se cumplen los supuestos distribucion normal centrada en cero y mismva varianza de los errores.
+Nuevamente vemos que no se cumplen los supuestos distribucion normal centrada en cero y misma varianza de los errores.
 
 ## Modelos múltiple de Mincer "enriquecido"
 
@@ -462,13 +463,15 @@ summary(modelo_mincer2)
 
 Sobre la significancia indivudual de cada coeficiente podemos decir que todos son significativos.
 
-El test F de significatividad global es menor a 0,05, por lo tanto podemos asegurar que por lo menos una de las variables regresoreas sirve para predecir el Salario por hora.
+El test F de significatividad global es menor a 0,05, por lo tanto podemos asegurar que por lo menos una de las variables regresoras sirve para predecir el Salario por hora.
 
 En este caso tenemos nuevamente una variable categórica, el Sexo, por lo tanto tenemos que revisar los valores del test F de significatividad conjunta de esta variable realizando un test ANOVA del modelo.
 
 Cabe aclarar que la interpretación de como varía el salario por hora en esta modelo es diferente a los anteriores ya que tenemos una relación de semielasticidad, siendo de la siguiente manera:
 Educación: el salario por hora aumenta 9.6% si se aumenta un año en la educación del trabajador.
+Experiencia_Potencial: el salario por ahora aumenta 2,39% si se aumenta un año la experiencia potencial
 Sexo: el salario por hora es un 28% mayor si el trabajador es varón.
+educación:sexoVarón: este coeficiente indica que el salario de los varones por cada año adicional de educación aumenta un 1,15% menos que el de las mujeres.
 
 
 ```{r}
@@ -479,7 +482,7 @@ Nuevamente, la variable sexo es significativa para explicar la variación del Sa
 
 En este caso, el valor de $R^2$ del modelo es con respecto a la variable transformada, por lo tanto tenemos que predecir todos los datos utilizados en el modelo y trasformarlos exponencialmente para obtener el valor real del salario por hora.
 
-Finalemente se calcula el valor de $R^2$ "manualmente".
+Finalmente, se calcula el valor de $R^2$ "manualmente".
 
 ```{r}
 # Predicciones en el logaritmo del salario
@@ -494,7 +497,7 @@ salario_observado <- datos$salario_horario
 # Calcular el R^2 corregido
 r2_salario <- 1 - sum((salario_observado - pred_salario)^2) / sum((salario_observado - mean(salario_observado))^2)
 
-cat("$R^2$ = ", r2_salario)
+cat("R-cuadrado = ", r2_salario)
 ```
 En este caso, el modelo explica un 12,15% de la variabilidad total del Salario por hora de los trabajadores.
 
@@ -541,25 +544,62 @@ Residuos vs leverage: siguen siendo todos menores a 0,5, por lo tanto ningún da
 
 Por lo tanto, este modelo es mas confiable que el del Mincer "sin enriquecer".
 
+
 ## Primer Modelo Propio
 
-El objetivo de este modelo es lograr ver la variación de salario por hora según la región en la cual habita el trabajador.
+El objetivo de este modelo es ver la variación de salario por hora según la región en la cual habita el trabajador, teniendo en cuenta los años de educación y la experiencia potencial.
+
+[ln(SalarioHorario)] = β0 + β1AñosEducacion + β2ln(Experiencia Potencial) + β3Region
+
+Cabe aclarar que existen valores de Experiencia potencial iguales a cero, al ser imposible calcular el ln de esos valores, se decide eliminarlos.
+
+### Evaluación del primero modelo propio
 
 ```{r}
 #5)Modelos propios y evaluacion----
 
+datos0 <- subset(datos, experiencia_potencial != 0)
+
 #Modelo propio 1----
-modelo_propio1 <- lm(formula = log(salario_horario) ~ educacion +
-                                     region +
-                                     experiencia_potencial+educacion*region,
-                                   data = datos)
+modelo_propio1 <- lm(formula = log(salario_horario) ~ educacion + log(experiencia_potencial)  +
+                                         region ,
+                                   data = datos0)
 summary(modelo_propio1)
 ```
+
+En este modelo la significancia individual de todos los coeficientes de las variables numéricas son significativos. 
+
+Aumentar 1 año la educacion aumenta un 8,6% el salario por hora y aumentar un 1% la experiencia potencial aumenta un 0,15% el salario por hora.
+
+Se realiza un ANOVA para ver la significancia de las variables categóricas
 
 ```{r}
 tidy(anova(modelo_propio1))
 ```
 
+El p-valor es menor a 0,05, por lo tanto la variable categórica es significativa para explicar la variación del salario por hora.
+
+El modelo está referenciado a la región de Cuyo, por lo tanto podemos decir que los salario por hora de las otras regiones con respecto a Cuyo se comportan de la siguiente manera:
+```{r}
+resumen <- summary(modelo_propio1)
+cat("Gran Buenos Aires: ", round(resumen$coefficients[4]*100,2),"% por encima")
+```
+```{r}
+cat("Noreste: ", round(resumen$coefficients[5]*100,2),"% por debajo")
+```
+```{r}
+cat("Noroeste: ", round(resumen$coefficients[6]*100,2),"% por debajo")
+```
+```{r}
+cat("Pampeana: ", round(resumen$coefficients[7]*100,2),"% por encima")
+```
+```{r}
+cat("Patagonia: ", round(resumen$coefficients[8]*100,2),"% por encima")
+```
+
+### Diagnóstico del primero modelo propio
+
+Se realizan los gráficos correspondientes 
 
 ```{r}
 #Uso augment para calcular las variables necesarios para hacer los gráficos con ggplot
@@ -592,6 +632,12 @@ g4 = ggplot(datos_augmentados, aes(.hat, .std.resid)) +
 grid.arrange(g1, g2, g3, g4, nrow = 2)
 ```
 
+Residuos vs valores predichos: evidencia una distribución centrada en cero.
+
+Normal Q-Q plot: hacia los extremos se desvía un poco de la normalidad
+
+Residuos vs leverage: no presenta valores da alto leverage.
+
 ```{r}
 # Predicciones en el logaritmo del salario
 pred_log_salario <- predict(modelo_propio1)
@@ -600,25 +646,56 @@ pred_log_salario <- predict(modelo_propio1)
 pred_salario <- exp(pred_log_salario)
 
 # Salario horario observado (original)
-salario_observado <- datos$salario_horario
+salario_observado <- datos0$salario_horario
 
 # Calcular el R^2 corregido
 r2_salario <- 1 - sum((salario_observado - pred_salario)^2) / sum((salario_observado - mean(salario_observado))^2)
 
-print(r2_salario) 
+cat("R-cuadrado: ", r2_salario) 
 ```
+El modelo explica un 16,25% de la variabilidad total.
+
+
+## Segundo Modelo Propio
+
+El objetivo de este modelo es ver la variación de salario por hora según el tipo de establecimiento laboral en el cual trabajo la persona, teniendo en cuenta los años de educación y la experiencia potencial.
+
+[ln(SalarioHorario)] = β0 + β1AñosEducacion + β2ln(Experiencia Potencial) + β3Tipo de establecimiento laboral
+
+Nuevamente, existen valores de Experiencia potencial iguales a cero, al ser imposible calcular el ln de esos valores, se decide eliminarlos.
 
 ```{r}
 #Modelo propio 2----
-modelo_propio2 <- lm(formula = log(salario_horario) ~ edad +  categoria_ocupacion + sexo,
-                     data = datos)
+modelo_propio2 <- lm(formula = log(salario_horario) ~ educacion + log(experiencia_potencial) +
+                                         tipo_establecimiento ,
+                                   data = datos0)
 summary(modelo_propio2)
 ```
+
+En este modelo la significancia individual de todos los coeficientes de las variables numéricas son significativos. 
+
+Aumentar 1 año la educacion aumenta un 7,7% el salario por hora y aumentar un 1% la experiencia potencial aumenta un 0,14% el salario por hora.
+
+Se realiza un ANOVA para ver la significancia de las variables categóricas
 
 ```{r}
 tidy(anova(modelo_propio2))
 ```
 
+El p-valor es menor a 0,05, por lo tanto la variable categórica es significativa para explicar la variación del salario por hora.
+
+El modelo está referenciado a el tipo de establecimiento estatalo, por lo tanto podemos decir que los salario por hora de los otros tipos de establecimiento con respecto al estatal se comportan de la siguiente manera:
+```{r}
+resumen <- summary(modelo_propio2)
+cat("Privado: ", round(resumen$coefficients[5]*100,2),"% por debajo")
+```
+```{r}
+cat("Otro: ", round(resumen$coefficients[4]*100,2),"% por debajo")
+```
+
+### Diagnóstico del primero modelo propio
+
+Se realizan los gráficos correspondientes
 
 ```{r}
 #Uso augment para calcular las variables necesarios para hacer los gráficos con ggplot
@@ -651,20 +728,76 @@ g4 = ggplot(datos_augmentados, aes(.hat, .std.resid)) +
 grid.arrange(g1, g2, g3, g4, nrow = 2)
 ```
 
+Residuos vs valores predichos: evidencia una distribución centrada en cero.
+
+Normal Q-Q plot: hacia los extremos se desvía un poco de la normalidad
+
+Residuos vs leverage: no presenta valores da alto leverage.
+
 ```{r}
 # Predicciones en el logaritmo del salario
-pred_log_salario <- predict(modelo_propio1)
+pred_log_salario <- predict(modelo_propio2)
 
 # Convertir las predicciones al salario horario original (inverso del logaritmo)
 pred_salario <- exp(pred_log_salario)
 
 # Salario horario observado (original)
-salario_observado <- datos$salario_horario
+salario_observado <- datos0$salario_horario
 
 # Calcular el R^2 corregido
 r2_salario <- 1 - sum((salario_observado - pred_salario)^2) / sum((salario_observado - mean(salario_observado))^2)
 
-print(r2_salario)
+cat("R-cuadrado: ",r2_salario)
+```
+
+El modelo explica un 13,73% de la variabilidad total.
+
+## Evaluación de los diferentes modelos vistos
+
+Se comparan los 
+
+```{r}
+#testeo----
+test <- read.csv("eph_test_2023.csv")
+
+pred_modelo_propio1 <- augment(modelo_propio1, newdata = datos)
+pred_modelo_propio1$exp_fitted <- exp(pred_modelo_propio1$.fitted)
+
+pred_modelo_mincer1 <- augment(modelo_mincer1, newdata = datos)
+
+pred_modelo_mincer2 <- augment(modelo_mincer2, newdata = datos)
+pred_modelo_mincer2$exp_fitted <- exp(pred_modelo_mincer2$.fitted)
+
+pred_modelo_propio2 <- augment(modelo_propio2, newdata = datos)
+pred_modelo_propio2$exp_fitted <- exp(pred_modelo_propio2$.fitted)
+
+pred_modelo_mutiple <- augment( modelo_multiple_salhr_hr, newdata=datos)
+
+library(janitor)
+# Calcular las métricas
+metrics <- tibble(
+  Model = c("Modelo Propio 1", "Modelo Mincer 1", "Modelo Mincer 2", "Modelo Propio 2", "Modelo lineal múltiple"),
+  RMSE = c(
+    rmse(data = pred_modelo_propio1, truth = salario_horario, estimate = exp_fitted)$.estimate,
+    rmse(data = pred_modelo_mincer1, truth = salario_horario, estimate = .fitted)$.estimate,
+    rmse(data = pred_modelo_mincer2, truth = salario_horario, estimate = exp_fitted)$.estimate,
+    rmse(data = pred_modelo_propio2, truth = salario_horario, estimate = exp_fitted)$.estimate,
+    rmse(data = pred_modelo_mutiple, truth = salario_horario, estimate = .fitted)$.estimate
+  ),
+  MAE = c(
+    mae(data = pred_modelo_propio1, truth = salario_horario, estimate = exp_fitted)$.estimate,
+    mae(data = pred_modelo_mincer1, truth = salario_horario, estimate = .fitted)$.estimate,
+    mae(data = pred_modelo_mincer2, truth = salario_horario, estimate = exp_fitted)$.estimate,
+    mae(data = pred_modelo_propio2, truth = salario_horario, estimate = exp_fitted)$.estimate,
+    mae(data = pred_modelo_mutiple, truth = salario_horario, estimate = .fitted)$.estimate
+  )
+)
+
+# Opcional: Limpiar los nombres de las columnas
+metrics <- clean_names(metrics)
+
+# Mostrar la tabla
+print(metrics)
 ```
 
 ```{r}
@@ -681,21 +814,26 @@ pred_modelo_mincer2$exp_fitted <- exp(pred_modelo_mincer2$.fitted)
 
 pred_modelo_propio2 <- augment(modelo_propio2, newdata = test)
 pred_modelo_propio2$exp_fitted <- exp(pred_modelo_propio2$.fitted)
+
+pred_modelo_mutiple <- augment( modelo_multiple_salhr_hr, newdata=test)
+
 library(janitor)
 # Calcular las métricas
 metrics <- tibble(
-  Model = c("Modelo Propio 1", "Modelo Mincer 1", "Modelo Mincer 2", "Modelo Propio 2"),
+  Model = c("Modelo Propio 1", "Modelo Mincer 1", "Modelo Mincer 2", "Modelo Propio 2", "Modelo lineal múltiple"),
   RMSE = c(
     rmse(data = pred_modelo_propio1, truth = salario_horario, estimate = exp_fitted)$.estimate,
     rmse(data = pred_modelo_mincer1, truth = salario_horario, estimate = .fitted)$.estimate,
     rmse(data = pred_modelo_mincer2, truth = salario_horario, estimate = exp_fitted)$.estimate,
-    rmse(data = pred_modelo_propio2, truth = salario_horario, estimate = exp_fitted)$.estimate
+    rmse(data = pred_modelo_propio2, truth = salario_horario, estimate = exp_fitted)$.estimate,
+    rmse(data = pred_modelo_mutiple, truth = salario_horario, estimate = .fitted)$.estimate
   ),
   MAE = c(
     mae(data = pred_modelo_propio1, truth = salario_horario, estimate = exp_fitted)$.estimate,
     mae(data = pred_modelo_mincer1, truth = salario_horario, estimate = .fitted)$.estimate,
     mae(data = pred_modelo_mincer2, truth = salario_horario, estimate = exp_fitted)$.estimate,
-    mae(data = pred_modelo_propio2, truth = salario_horario, estimate = exp_fitted)$.estimate
+    mae(data = pred_modelo_propio2, truth = salario_horario, estimate = exp_fitted)$.estimate,
+    mae(data = pred_modelo_mutiple, truth = salario_horario, estimate = .fitted)$.estimate
   )
 )
 
@@ -705,3 +843,204 @@ metrics <- clean_names(metrics)
 # Mostrar la tabla
 print(metrics)
 ```
+
+De todos los modelos planteados hasta este momento el mejor a la hora de predecir el salario por hora de los trabajadores es el Modelo Propio 1 que tiene en cuenta la Región en la cual desempeñan sus tareas los trabajadores, ya que las métricas de RMSE y MAE son las menores en comparación con los otros modelos.
+
+## Modelo Lineal Robusto
+
+Se plantea un modelo lineal robusto con la misma configuración que el Modelo Lineal Múltiple.
+
+Para entrenar este modelo y re-entrenar el Modelo Lineal mútiple y el Modelo de Mincer se utilzaron datos cuya variable salario por hora tiene outliers.
+
+En los Boxplots que se grafican a continuación se puede ver la distribución de los datos con y sin outliers.
+
+```{r}
+# cargo datos train con outliers
+
+train <- read.csv("eph_train_outliers_2023.csv")
+train <- train[-c(2,3,6)]
+
+datos$tipo <- "sin_outliers"
+train$tipo <- "con_outliers"
+prueba <- rbind(datos, train)
+
+ggplot(data = prueba, aes(y = salario_horario, group = tipo, fill = tipo)) +
+  geom_boxplot() + 
+  scale_fill_brewer(palette="Dark2") +
+  theme_bw() +
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(title = "Boxplots de salario por hora trabajada", subtitle = "En pesos") +
+  labs(y = "Salario por hora en pesos") +
+  labs(x = "") +
+  facet_wrap(~tipo)
+```
+
+Se entrenan los 3 modelos y se obtienen los siguientes resultados para cada uno de ellos
+
+```{r}
+
+modelo_multiple_outliers <- lm(formula = salario_horario ~ experiencia_potencial + I(experiencia_potencial^2),
+                             data=train)
+summary(modelo_multiple_outliers)
+```
+
+```{r}
+modelo_multiple_robusto_outliers <- rlm(formula = salario_horario ~ experiencia_potencial + I(experiencia_potencial^2),
+                     data=train)
+summary(modelo_multiple_robusto_outliers)
+```
+
+```{r}
+modelo_mincer2_outliers <- lm(formula = log(salario_horario) ~ educacion + 
+                                experiencia_potencial + 
+                                I(experiencia_potencial^2) +
+                                sexo +
+                                sexo:educacion,
+                            data=train)
+summary(modelo_mincer2_outliers)
+```
+
+```{r}
+
+modelo_mincer1_outliers <- lm(formula = salario_horario ~ educacion + 
+                       experiencia_potencial + 
+                       experiencia_potencial^2 +
+                       sexo +
+                       sexo*educacion,
+                     data=train)
+summary(modelo_mincer1_outliers, conf.int = T)
+```
+
+En principio observamos que el error residual estándar del modelo lineal múltiple robusto es menor que el del modelo lineal múltiple, con lo cual ya podemos inferir que este será mejor en la predicción de la variable salario por hora.
+
+```{r}
+multiple <- summary(modelo_multiple_outliers)
+cat("RSE Modelo lineal múltiple: ", multiple$sigma)
+```
+
+```{r}
+robusto <- summary(modelo_multiple_robusto_outliers)
+cat("RSE Modelo lineal múltiple robusto: ", robusto$sigma)
+```
+
+Ahora miremos las métricas de los coeficientes.
+
+```{r}
+
+resultado1 <- tidy(modelo_multiple_outliers)
+resultado2 <- tidy(modelo_multiple_robusto_outliers)
+
+# Unir los resultados en una sola tabla
+library(dplyr)
+resultados <- bind_rows(
+  resultado1 %>% mutate(modelo = "Modelo Lineal Múltiple"),
+  resultado2 %>% mutate(modelo = "Modelo Lineal Múltiple Robusto"))
+print(resultados)
+```
+
+Los valores del Error estándar de todos los coeficientes son menores en el Modelo Lineal Mútltiple Robusto, lo cual indica una mejore precisión a la hora de predecir el salario por hora de los trabajadores.
+
+```{r}
+pred_modelo_multiple_outliers <- augment(modelo_multiple_outliers, newdata = datos)
+
+pred_modelo_multiple_robusto_outliers <- augment(modelo_multiple_robusto_outliers, newdata = datos)
+
+pred_modelo_mincer2_outliers <- augment(modelo_mincer2_outliers, newdata = datos)
+pred_modelo_mincer2_outliers$exp_fitted <- exp(pred_modelo_mincer2_outliers$.fitted)
+
+pred_modelo_mincer1_outliers <- augment(modelo_mincer1_outliers, newdata = datos)
+
+
+# Calcular las métricas
+metrics <- tibble(
+  Model = c("Modelo Múltiple", "Modelo Múltiple Robusto", "Modelo Mincer2","Modelo Mincer1"),
+  RMSE = c(
+    rmse(data = pred_modelo_multiple_outliers, truth = salario_horario, estimate = .fitted)$.estimate,
+    rmse(data = pred_modelo_multiple_robusto_outliers, truth = salario_horario, estimate = .fitted)$.estimate,
+    rmse(data = pred_modelo_mincer2_outliers, truth = salario_horario, estimate = exp_fitted)$.estimate,
+    rmse(data = pred_modelo_mincer1_outliers, truth = salario_horario, estimate = .fitted)$.estimate
+  ),
+  MAE = c(
+    mae(data = pred_modelo_multiple_outliers, truth = salario_horario, estimate = .fitted)$.estimate,
+    mae(data = pred_modelo_multiple_robusto_outliers, truth = salario_horario, estimate = .fitted)$.estimate,
+    mae(data = pred_modelo_mincer2_outliers, truth = salario_horario, estimate = exp_fitted)$.estimate,
+    mae(data = pred_modelo_mincer1_outliers, truth = salario_horario, estimate = .fitted)$.estimate
+  )
+)
+
+# Opcional: Limpiar los nombres de las columnas
+metrics <- clean_names(metrics)
+
+# Mostrar la tabla
+print(metrics)
+```
+
+
+
+```{r}
+pred_modelo_multiple_outliers <- augment(modelo_multiple_outliers, newdata = test)
+
+pred_modelo_multiple_robusto_outliers <- augment(modelo_multiple_robusto_outliers, newdata = test)
+
+pred_modelo_mincer2_outliers <- augment(modelo_mincer2_outliers, newdata = test)
+pred_modelo_mincer2_outliers$exp_fitted <- exp(pred_modelo_mincer2_outliers$.fitted)
+
+pred_modelo_mincer1_outliers <- augment(modelo_mincer1_outliers, newdata = test)
+
+
+# Calcular las métricas
+metrics <- tibble(
+  Model = c("Modelo Múltiple", "Modelo Múltiple Robusto", "Modelo Mincer2","Modelo Mincer1"),
+  RMSE = c(
+    rmse(data = pred_modelo_multiple_outliers, truth = salario_horario, estimate = .fitted)$.estimate,
+    rmse(data = pred_modelo_multiple_robusto_outliers, truth = salario_horario, estimate = .fitted)$.estimate,
+    rmse(data = pred_modelo_mincer2_outliers, truth = salario_horario, estimate = exp_fitted)$.estimate,
+    rmse(data = pred_modelo_mincer1_outliers, truth = salario_horario, estimate = .fitted)$.estimate
+  ),
+  MAE = c(
+    mae(data = pred_modelo_multiple_outliers, truth = salario_horario, estimate = .fitted)$.estimate,
+    mae(data = pred_modelo_multiple_robusto_outliers, truth = salario_horario, estimate = .fitted)$.estimate,
+    mae(data = pred_modelo_mincer2_outliers, truth = salario_horario, estimate = exp_fitted)$.estimate,
+    mae(data = pred_modelo_mincer1_outliers, truth = salario_horario, estimate = .fitted)$.estimate
+  )
+)
+
+# Opcional: Limpiar los nombres de las columnas
+metrics <- clean_names(metrics)
+
+# Mostrar la tabla
+print(metrics)
+```
+
+# Ajustar el modelo logarítmico
+modelo <- lm(log(y) ~ x1 + x2 + x3, data = mi_data)
+
+# Obtener predicciones en la escala logarítmica y transformarlas de nuevo a la escala original
+predicciones_log <- predict(modelo)
+predicciones_y <- exp(predicciones_log)
+
+# Calcular el R cuadrado ajustado en la escala original
+y_original <- mi_data$y
+n <- length(y_original)
+k <- length(modelo$coefficients) - 1  # Número de predictores
+
+# Sum of squares residual
+ss_res <- sum((y_original - predicciones_y)^2)
+
+# Total sum of squares
+ss_tot <- sum((y_original - mean(y_original))^2)
+
+# R^2 ajustado
+r2_ajustado_y <- 1 - ((ss_res / (n - k - 1)) / (ss_tot / (n - 1)))
+
+# Mostrar el R^2 ajustado
+r2_ajustado_y
+
+# armamos lista con todos los modelos
+models <- list(modelo_sc_r = modelo_sc_r, modelo_sc_pt = modelo_sc_pt, modelo_sc_l3 = modelo_sc_l3, modelo_sc_tb = modelo_sc_tb, modelo_varias = modelo_varias, modelo_varias_l3 = modelo_varias_l3, modelo_varias_tb = modelo_varias_tb)
+# calculamos las variables resumen
+map_df(models, tidy, .id = "model")
+
+
+
