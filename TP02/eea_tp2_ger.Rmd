@@ -1,0 +1,477 @@
+---
+title: "Predicción del precio de los jugadores en las 5 ligas de futbol europeas mas importantes"
+author: "Rodrigo Marques, Agustín Cepeda, Germán Fernández"
+date: "15 de Diciembre de 2024"
+subtitle: "Enfoque Estadístico del Aprendizaje"
+output:
+  html_document:
+    toc: yes
+    code_folding: show
+    toc_float: yes
+    df_print: paged
+    theme: united
+    code_download: yes
+---
+
+<style type="text/css">
+div.main-container {
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+```{r, message=FALSE, warning=FALSE}
+#Librerias
+library(tidyverse)
+library(tidymodels)
+library(GGally)
+library(ggplot2)
+library(MASS)
+library(robustbase)
+library(dplyr)
+library(corrplot)
+library(caret)
+library(viridis)
+library(gridExtra)
+library(kableExtra)
+```
+
+# Introducción
+
+
+# Dataset
+
+
+
+# Análisis Exploratorio de Datos
+
+```{r, message=FALSE, warning=FALSE}
+# Carga de datset
+df <- as.data.frame(read.csv("dataset.csv"))
+df <- as.data.frame(df)
+df <- na.omit(df)
+colnames(df)[colnames(df) == "market_value_in_eur"] <- "precio"
+```
+
+```{r, message=FALSE, warning=FALSE}
+colnames(df)[colnames(df) == "market_value_in_eur"] <- "precio"
+df$continente <- factor(df$continente, levels = c("europa", "america", "africa", "asia_oceania"))
+grafico1 <- ggplot(df, aes(x=continente, fill = continente)) +
+  geom_bar() +
+  scale_fill_viridis(discrete = TRUE, option = "D") + # Paleta accesible
+  labs(y = "Cantidad", 
+       x = "Continente",
+       title = "Cantidad de jugadores por continente") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1),
+        legend.position = "none")
+
+df$Comp <- factor(df$Comp, levels = c("es La Liga", "it Serie A", "fr Ligue 1", "de Bundesliga",
+                                      "eng Premier League"))
+grafico2 <- ggplot(df, aes(x=Comp, fill = Comp)) + 
+  geom_bar() +
+  scale_fill_viridis(discrete = TRUE, option = "D") + # Paleta accesible
+  labs(y = "Cantidad", x = "Liga", title = "Cantidad de jugadores por liga") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1),
+        legend.position = "none")
+
+posiciones <- table(df$sub_position)
+posiciones <- names(sort(posiciones))
+df$sub_position <- factor(df$sub_position, levels = posiciones)
+grafico3 <- ggplot(df, aes(x=sub_position, fill = sub_position)) + 
+  geom_bar() +
+  scale_fill_viridis(discrete = TRUE, option = "D") + # Paleta accesible
+  labs(y = "Count", x = "Liga", title = "Cantidad de jugadores por posicion") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1,),
+        legend.position = "none")
+
+grafico4 <- ggplot(df, aes(x=foot, fill = foot)) + 
+  geom_bar() +
+  scale_fill_viridis(discrete = TRUE, option = "D") + # Paleta accesible
+  labs(y = "Count", x = "Liga", title = "Cantidad de jugadores por pie habil") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1,),
+        legend.position = "none")
+
+grid.arrange(grafico1, grafico2, grafico3, grafico4,nrow = 2)
+```
+
+## Correlograma
+
+```{r, message=FALSE, warning=FALSE}
+df %>% 
+  dplyr::select(Age, Gls, Ast, precio) %>% 
+  mutate(liga = df$current_club_domestic_competition_id) %>%
+  ggpairs(., mapping = aes(colour = liga),
+          upper = list(continuous = wrap("cor", size = 3, hjust=0.5)), progress=FALSE) + 
+  scale_color_viridis_d(option = "D") + 
+  scale_fill_viridis_d(option = "D") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position = "bottom") + 
+  theme_bw() +
+  labs(title='Correlograma variables continuas')
+
+```
+
+```{r, message=FALSE, warning=FALSE}
+# Agregar nueva variable que tenga en cuenta los precios de los jugadores y poder hacer un split 
+# test-train estratificado
+caja_precios <- boxplot(df$precio)
+caja_precios$stats
+
+df$precio_cat <- NA
+
+for (i in 1:length(df$precio)) {
+  if (df$precio[i] >= 100000000) { 
+    df$precio_cat[i] <- "muy_alto"}
+  if (df$precio[i] < 100000000 && df$precio[i] >= caja_precios$stats[5]) {
+    df$precio_cat[i] <- "alto"}
+  if (df$precio[i] < caja_precios$stats[5] && df$precio[i] >= caja_precios$stats[4]) {
+    df$precio_cat[i] <- "medio"}
+  if (df$precio[i] < caja_precios$stats[4] && df$precio[i] >= caja_precios$stats[3]) {
+    df$precio_cat[i] <- "bajo"}
+  if (df$precio[i] < caja_precios$stats[3]){
+    df$precio_cat[i] <- "muy_bajo"}
+}
+
+
+table(df$precio_cat)
+
+# Suponiendo que `df$clase` es la variable categórica
+set.seed(28749658)  # Fijar semilla para reproducibilidad
+
+# Crear índices estratificados basados en la variable `clase`
+train_indices <- createDataPartition(df$precio_cat, p = 0.7, list = FALSE)  # 70% entrenamiento
+
+# Dividir los datos
+train_data <- df[train_indices, ]
+test_data <- df[-train_indices, ]
+
+# Verificar la distribución de clases
+table(train_data$precio_cat)
+table(test_data$precio_cat)
+```
+## Jugadores mas caros
+
+Los 10 jugadores mas caros
+```{r, message=FALSE, warning=FALSE}
+mas_caros_nombre <- df %>% 
+  slice_max(order_by = precio, n=10)  %>% 
+  pull(name)
+mas_caros_equipo <- df %>% 
+  slice_max(order_by = precio, n=10)  %>% 
+  pull(Squad)
+mas_caros_precio <- df %>% 
+  slice_max(order_by = precio, n=10)  %>% 
+  pull(precio)
+mas_caro <- data.frame(Nombre = mas_caros_nombre, 
+                       Equipo = mas_caros_equipo, 
+                       Precio = mas_caros_precio)
+
+kable(mas_caro)
+```
+
+## Jugadores mas baratos
+
+Los 10 jugadores mas baratos
+```{r, message=FALSE, warning=FALSE}
+mas_baratos_nombre <- df %>% 
+  slice_min(order_by = precio, n=10)  %>% 
+  pull(name)
+mas_baratos_equipo <- df %>% 
+  slice_min(order_by = precio, n=10)  %>% 
+  pull(Squad)
+mas_baratos_precio <- df %>% 
+  slice_min(order_by = precio, n=10)  %>% 
+  pull(precio)
+mas_barato <- data.frame(Nombre = mas_baratos_nombre, 
+                       Equipo = mas_baratos_equipo, 
+                       Precio = mas_baratos_precio)
+
+kable(mas_barato)
+```
+
+# Regresión Lineal Simple
+
+## Precio vs. Goles
+
+
+```{r, message=FALSE, warning=FALSE}
+modelo_clasico_goles = lm(data = train_data, formula = precio ~ Gls)
+summary(modelo_clasico_goles)
+```
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(df, aes(x= Gls, y=precio))+
+  geom_point() +
+  theme_bw() +
+  geom_smooth(method = "lm", formula = y ~ x, color="forestgreen", se = FALSE)
+```
+
+
+### Evaluación
+
+#### Datos de entrenamiento
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_goles <- augment(modelo_clasico_goles, newdata = train_data)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_goles, truth = precio, estimate = .fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_goles, truth = precio, estimate = .fitted)$.estimate)
+```
+
+#### Datos de prueba
+
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_goles <- augment(modelo_clasico_goles, newdata = test_data)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_goles, truth = precio, estimate = .fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_goles, truth = precio, estimate = .fitted)$.estimate)
+```
+
+### Diagnóstico
+
+```{r, message=FALSE, warning=FALSE}
+datos_augmentados <- augment(modelo_clasico_goles)
+g1 <- ggplot(datos_augmentados, aes(.fitted, .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Residuos vs valores predichos") + 
+  theme_bw()
+g2 <- ggplot(datos_augmentados, aes(sample = .std.resid)) +
+  stat_qq() +
+  geom_abline() +
+  labs(title = "Normal QQ plot") + 
+  theme_bw()
+g3 <- ggplot(datos_augmentados, aes(.fitted, sqrt(abs(.std.resid)))) +
+  geom_point() +
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Scale-location plot")
+g4 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
+  geom_vline(size = 2, colour = "white", xintercept = 0) +
+  geom_hline(size = 2, colour = "white", yintercept = 0) +
+  geom_point() + 
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Residual vs leverage")
+grid.arrange(g1, g2, g3, g4, nrow=2)
+```
+
+## Precio vs. Edad
+
+```{r, message=FALSE, warning=FALSE}
+modelo_clasico_edad = modelo_clasico_edad2 = lm(data = train_data, formula = precio ~ Age + I(Age^2))
+summary(modelo_clasico_edad)
+```
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(df, aes(x= Age, y=precio))+
+  geom_point() +
+  theme_bw() +
+  geom_smooth(method = "lm", formula = y ~ x + I(x^2), color="forestgreen", se = FALSE)
+```
+
+```{r, message=FALSE, warning=FALSE}
+cat("A partir de los", round(5113615/(2*110147),0), "años, el precio de los jugadores comienza a disminuir")
+```
+
+### Evaluación
+
+#### Datos de entrenamiento
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_edad <- augment(modelo_clasico_edad, newdata = train_data)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_edad, truth = precio, estimate = .fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_edad, truth = precio, estimate = .fitted)$.estimate)
+```
+
+#### Datos de prueba
+
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_edad <- augment(modelo_clasico_edad, newdata = test_data)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_edad, truth = precio, estimate = .fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_edad, truth = precio, estimate = .fitted)$.estimate)
+```
+
+### Diagnóstico
+
+```{r, message=FALSE, warning=FALSE}
+datos_augmentados <- augment(modelo_clasico_edad)
+g1 <- ggplot(datos_augmentados, aes(.fitted, .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Residuos vs valores predichos") + 
+  theme_bw()
+g2 <- ggplot(datos_augmentados, aes(sample = .std.resid)) +
+  stat_qq() +
+  geom_abline() +
+  labs(title = "Normal QQ plot") + 
+  theme_bw()
+g3 <- ggplot(datos_augmentados, aes(.fitted, sqrt(abs(.std.resid)))) +
+  geom_point() +
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Scale-location plot")
+g4 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
+  geom_vline(size = 2, colour = "white", xintercept = 0) +
+  geom_hline(size = 2, colour = "white", yintercept = 0) +
+  geom_point() + 
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Residual vs leverage")
+grid.arrange(g1, g2, g3, g4, nrow=2)
+```
+
+# Regresión Lineal Múltiple
+
+## Precio vs. Goles + Edad + Asistencias + Continente de nacimiento del jugador + Liga donde juega
+
+```{r, message=FALSE, warning=FALSE}
+modelo_clasico_multiple_1 = lm(data = train_data, 
+                             formula = precio ~ Gls + Age + I(Age^2) + Ast + 
+                               continente + current_club_domestic_competition_id)
+summary(modelo_clasico_multiple_1)
+```
+
+### Evaluación
+
+#### Datos de entrenamiento
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_multiple_1 <- augment(modelo_clasico_multiple_1, newdata = train_data)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate)
+```
+
+#### Datos de prueba
+
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_multiple_1 <- augment(modelo_clasico_multiple_1, newdata = test_data)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate)
+```
+
+### Diagnóstico
+
+```{r, message=FALSE, warning=FALSE}
+datos_augmentados <- augment(modelo_clasico_multiple_1)
+g5 <- ggplot(datos_augmentados, aes(.fitted, .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Residuos vs valores predichos") + 
+  theme_bw()
+g6 <- ggplot(datos_augmentados, aes(sample = .std.resid)) +
+  stat_qq() +
+  geom_abline() +
+  labs(title = "Normal QQ plot") + 
+  theme_bw()
+g7 <- ggplot(datos_augmentados, aes(.fitted, sqrt(abs(.std.resid)))) +
+  geom_point() +
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Scale-location plot")
+g8 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
+  geom_vline(size = 2, colour = "white", xintercept = 0) +
+  geom_hline(size = 2, colour = "white", yintercept = 0) +
+  geom_point() + 
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Residual vs leverage")
+grid.arrange(g5, g6, g7, g8, nrow=2)
+```
+
+
+
+
+
+## log(Precio) vs. Goles + Edad + Asistencias + Continente de nacimiento del jugador + Liga donde juega
+
+```{r, message=FALSE, warning=FALSE}
+modelo_clasico_multiple = lm(data = train_data, 
+                                formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                  continente + current_club_domestic_competition_id)
+summary(modelo_clasico_multiple)
+```
+
+### Evaluación
+
+#### Datos de entrenamiento
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_multiple <- augment(modelo_clasico_multiple, newdata = train_data)
+pred_modelo_clasico_multiple$exp_fitted <- exp(pred_modelo_clasico_multiple$.fitted)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
+```
+
+#### Datos de prueba
+
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_multiple <- augment(modelo_clasico_multiple, newdata = test_data)
+pred_modelo_clasico_multiple$exp_fitted <- exp(pred_modelo_clasico_multiple$.fitted)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
+```
+
+### Diagnóstico
+
+```{r, message=FALSE, warning=FALSE}
+datos_augmentados <- augment(modelo_clasico_multiple)
+g9 <- ggplot(datos_augmentados, aes(.fitted, .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Residuos vs valores predichos") + 
+  theme_bw()
+g10 <- ggplot(datos_augmentados, aes(sample = .std.resid)) +
+  stat_qq() +
+  geom_abline() +
+  labs(title = "Normal QQ plot") + 
+  theme_bw()
+g11 <- ggplot(datos_augmentados, aes(.fitted, sqrt(abs(.std.resid)))) +
+  geom_point() +
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Scale-location plot")
+g12 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
+  geom_vline(size = 2, colour = "white", xintercept = 0) +
+  geom_hline(size = 2, colour = "white", yintercept = 0) +
+  geom_point() + 
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Residual vs leverage")
+grid.arrange(g9, g10, g11, g12, nrow=2)
+```
+
+# Regresión Lineal Múltiple Robusta
+
+## Primero Modelo robusto
+```{r, message=FALSE, warning=FALSE}
+modelo_multiple_lmrob_2 <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                 continente + current_club_domestic_competition_id, 
+                               data=train_data)
+```
+
+
+### Diagnóstico
+```{r, message=FALSE, warning=FALSE}
+plot(modelo_multiple_lmrob_2)
+```
+
+

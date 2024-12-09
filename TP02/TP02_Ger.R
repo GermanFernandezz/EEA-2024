@@ -1,6 +1,6 @@
 setwd("/Users/jorgefernandez/Documents/Cienciadedatos/EEA2024/TP02")
 
-# Librerias
+# Librerias----
 library(tidyverse)
 library(tidymodels)
 library(GGally)
@@ -10,15 +10,79 @@ library(robustbase)
 library(dplyr)
 library(corrplot)
 library(caret)
+library(viridis)
 
-# Carga de datset
+# Carga de datset----
 df <- as.data.frame(read.csv("dataset.csv"))
 colnames(df)
 str(df) 
 df <- as.data.frame(df)
+df <- na.omit(df)
 
 colnames(df)[colnames(df) == "market_value_in_eur"] <- "precio"
 
+
+# EDA----
+df$continente <- factor(df$continente, levels = c("europa", "america", "africa", "asia_oceania"))
+ggplot(df, aes(x=continente, fill = continente)) +
+  geom_bar() +
+  scale_fill_viridis(discrete = TRUE, option = "D") + # Paleta accesible
+  labs(y = "Cantidad", 
+       x = "Continente",
+       title = "Cantidad de jugadores por continente") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1),
+        legend.position = "none")
+  
+df$Comp <- factor(df$Comp, levels = c("es La Liga", "it Serie A", "fr Ligue 1", "de Bundesliga",
+                                      "eng Premier League"))
+ggplot(df, aes(x=Comp, fill = Comp)) + 
+  geom_bar() +
+  scale_fill_viridis(discrete = TRUE, option = "D") + # Paleta accesible
+  labs(y = "Cantidad", x = "Liga", title = "Cantidad de jugadores por liga") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1),
+        legend.position = "none")
+
+posiciones <- table(df$sub_position)
+posiciones <- names(sort(posiciones))
+df$sub_position <- factor(df$sub_position, levels = posiciones)
+
+ggplot(df, aes(x=position, fill = position)) + 
+  geom_bar() +
+  scale_fill_viridis(discrete = TRUE, option = "D") + # Paleta accesible
+  labs(y = "Count", x = "Liga", title = "Cantidad de jugadores por posición") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1,),
+        legend.position = "none")
+  
+posiciones <- table(df$sub_position)
+posiciones <- names(sort(posiciones))
+df$sub_position <- factor(df$sub_position, levels = posiciones)
+ggplot(df, aes(x=sub_position, fill = sub_position)) + 
+  geom_bar() +
+  scale_fill_viridis(discrete = TRUE, option = "D") + # Paleta accesible
+  labs(y = "Count", x = "Liga", title = "Cantidad de jugadores por posicion") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1,),
+        legend.position = "none")
+
+
+ggplot(df, aes(x=foot, fill = foot)) + 
+  geom_bar() +
+  scale_fill_viridis(discrete = TRUE, option = "D") + # Paleta accesible
+  labs(y = "Count", x = "Liga", title = "Cantidad de jugadores por pie habil") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1,),
+        legend.position = "none")
+
+ggplot(df, aes(x=Age))+
+  geom_histogram(bins=10) 
+
+unique(df$foot)
+
+
+# Split Train-Test----
 # Agregar nueva variable que tenga en cuenta los precios de los jugadores y poder hacer un split 
 # test-train estratificado
 caja_precios <- boxplot(df$precio)
@@ -70,7 +134,32 @@ plot(df$G.PK, df$precio)
 plot(df$PK, df$precio)
 
 # Los 10 jugadores con precio mas alto y con precio mas alto alcanzado
-df %>% slice_max(order_by = precio, n=10)  %>% pull(name)
+mas_caros_nombre <- df %>% 
+  slice_max(order_by = precio, n=10)  %>% 
+  pull(name)
+mas_caros_equipo <- df %>% 
+  slice_max(order_by = precio, n=10)  %>% 
+  pull(Squad)
+mas_caros_precio <- df %>% 
+  slice_max(order_by = precio, n=10)  %>% 
+  pull(precio)
+mas_caro <- data.frame(Nombre = mas_caros_nombre, 
+                       Equipo = mas_caros_equipo, 
+                       Precio = mas_caros_precio)
+
+mas_baratos_nombre <- df %>% 
+  slice_min(order_by = precio, n=10)  %>% 
+  pull(name)
+mas_baratos_equipo <- df %>% 
+  slice_min(order_by = precio, n=10)  %>% 
+  pull(Squad)
+mas_baratos_precio <- df %>% 
+  slice_min(order_by = precio, n=10)  %>% 
+  pull(precio)
+mas_barato <- data.frame(Nombre = mas_baratos_nombre, 
+                       Equipo = mas_baratos_equipo, 
+                       Precio = mas_baratos_precio)
+
 df %>% slice_max(order_by = highest_market_value_in_eur, n=10) %>% pull(name)
 # A simple vista se nota la diferencia en las edades
 
@@ -78,9 +167,11 @@ df %>% slice_max(order_by = highest_market_value_in_eur, n=10) %>% pull(name)
 selected_data <- df %>% dplyr::select(Age, Gls, Ast, precio)
 df %>% 
   dplyr::select(Age, Gls, Ast, precio) %>% 
-  mutate(liga = df$Comp) %>%
+  mutate(liga = df$current_club_domestic_competition_id) %>%
   ggpairs(., mapping = aes(colour = liga),
           upper = list(continuous = wrap("cor", size = 3, hjust=0.5)), progress=FALSE) + 
+  scale_color_viridis_d(option = "D") + 
+  scale_fill_viridis_d(option = "D") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position = "bottom") + 
   theme_bw() +
   labs(title='Correlograma variables continuas')
@@ -108,7 +199,7 @@ divisions[is.infinite(divisions)] <- max_value
 df$npxG_Gls <- divisions
 #---------------------------------------------------------------------------------------
 
-# Modelos clásicos
+# Modelos clásicos----
 
 # Precio vs Goles
 
@@ -176,7 +267,7 @@ coef_modelo_clasico_edad
 # Observamos los valores de la evaluación global
 glance(modelo_clasico_edad)
 
-modelo_clasico_edad2 = lm(data = train_data, formula = precio ~ I(Age^2))
+modelo_clasico_edad2 = lm(data = train_data, formula = precio ~ Age + I(Age^2))
 # Observamos los valores de los coeficientes estimados
 coef_modelo_clasico_edad2 = tidy(modelo_clasico_edad2, conf.int = TRUE, conf.level = 0.95)
 coef_modelo_clasico_edad2
@@ -224,48 +315,315 @@ mae(data = pred_modelo_clasico_gls_age_ast, truth = precio, estimate = .fitted)$
 
 # -----------------------------------
 
-# Modelo robusto robustbase----
-modelo_multiple_robustbase <- lmrob(formula = precio ~ Gls + 
-                                            Ast + 
-                                            I(Age^2) +
-                                      continente, 
+
+
+# Multiple 1: precio = Goles + Edad + Asistencia + continenete + liga----
+
+# Fiteamos el modelo multiple
+modelo_clasico_multiple_1 = lm(data = train_data, 
+                             formula = precio ~ Gls + Age + I(Age^2) + Ast + 
+                               continente + current_club_domestic_competition_id)
+summary(modelo_clasico_multiple_1)
+# Observamos los valores de los coeficientes estimados
+coef_modelo_clasico_multiple_1 = tidy(modelo_clasico_multiple_1, conf.int = TRUE)
+coef_modelo_clasico_multiple_1
+
+# Observamos los valores de la evaluación global
+glance(modelo_clasico_multiple_1)
+
+#Metricas
+pred_modelo_clasico_multiple_1 <- augment(modelo_clasico_multiple_1, newdata = train_data)
+rmse(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate
+mae(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate
+
+pred_modelo_clasico_multiple_1 <- augment(modelo_clasico_multiple_1, newdata = test_data)
+rmse(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate
+mae(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate
+
+
+#Diagnóstico
+datos_augmentados <- augment(modelo_clasico_multiple_1)
+ggplot(datos_augmentados, aes(.fitted, .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Residuos vs valores predichos") + 
+  theme_bw()
+ggplot(datos_augmentados, aes(sample = .std.resid)) +
+  stat_qq() +
+  geom_abline() +
+  labs(title = "Normal QQ plot") + 
+  theme_bw()
+ggplot(datos_augmentados, aes(.fitted, sqrt(abs(.std.resid)))) +
+  geom_point() +
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Scale-location plot")
+ggplot(datos_augmentados, aes(.hat, .std.resid)) +
+  geom_vline(size = 2, colour = "white", xintercept = 0) +
+  geom_hline(size = 2, colour = "white", yintercept = 0) +
+  geom_point() + 
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Residual vs leverage")
+
+
+# -----------------------------------
+
+
+# Multiple 2: log(precio) = Goles + Edad + Asistencia + continenete + liga----
+
+# Fiteamos el modelo multiple
+modelo_clasico_multiple_2 = lm(data = train_data, 
+                                formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                  continente + current_club_domestic_competition_id)
+summary(modelo_clasico_multiple_2)
+# Observamos los valores de los coeficientes estimados
+coef_modelo_clasico_multiple_2 = tidy(modelo_clasico_multiple_2, conf.int = TRUE)
+coef_modelo_clasico_multiple_2
+
+# Observamos los valores de la evaluación global
+glance(modelo_clasico_multiple_2)
+
+#Metricas
+pred_modelo_clasico_multiple_2 <- augment(modelo_clasico_multiple_2, newdata = train_data)
+pred_modelo_clasico_multiple_2$exp_fitted <- exp(pred_modelo_clasico_multiple_2$.fitted)
+rmse(data = pred_modelo_clasico_multiple_2, truth = precio, estimate = exp_fitted)$.estimate
+mae(data = pred_modelo_clasico_multiple_2, truth = precio, estimate = exp_fitted)$.estimate
+
+pred_modelo_clasico_multiple_2 <- augment(modelo_clasico_multiple_2, newdata = test_data)
+pred_modelo_clasico_multiple_2$exp_fitted <- exp(pred_modelo_clasico_multiple_2$.fitted)
+rmse(data = pred_modelo_clasico_multiple_2, truth = precio, estimate = exp_fitted)$.estimate
+mae(data = pred_modelo_clasico_multiple_2, truth = precio, estimate = exp_fitted)$.estimate
+
+
+#Diagnóstico
+datos_augmentados <- augment(modelo_clasico_multiple_2)
+ggplot(datos_augmentados, aes(.fitted, .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Residuos vs valores predichos") + 
+  theme_bw()
+ggplot(datos_augmentados, aes(sample = .std.resid)) +
+  stat_qq() +
+  geom_abline() +
+  labs(title = "Normal QQ plot") + 
+  theme_bw()
+ggplot(datos_augmentados, aes(.fitted, sqrt(abs(.std.resid)))) +
+  geom_point() +
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Scale-location plot")
+ggplot(datos_augmentados, aes(.hat, .std.resid)) +
+  geom_vline(size = 2, colour = "white", xintercept = 0) +
+  geom_hline(size = 2, colour = "white", yintercept = 0) +
+  geom_point() + 
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Residual vs leverage")
+
+
+# -----------------------------------
+
+# Metricas de ambos modelos clásicos multiples en TRAIN
+metricas1 = metrics(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted) %>% 
+  mutate(.estimate = round(.estimate, 4))
+metricas1
+
+metricas2 = metrics(data = pred_modelo_clasico_multiple_2, truth = precio, estimate = .fitted) %>% 
+  mutate(.estimate = round(.estimate, 4))
+metricas2
+
+
+# Metricas de ambos modelos clásicos multiples en TEST
+modelos <- list(multiple_1 = modelo_clasico_multiple_1, multiple_2 = modelo_clasico_multiple_2)
+
+lista_predicciones_testing = map(.x = modelos, .f = augment, newdata = test_data) 
+
+metricas1_test = lista_predicciones_testing$multiple_1 %>%  
+  metrics(truth=precio, estimate=.fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas2_test = lista_predicciones_testing$multiple_2 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas1_test
+metricas2_test
+
+
+#------------------------------------
+# Modelo robusto robustbase : precio----
+modelo_multiple_lmrob <- lmrob(formula = precio ~ Gls + Age + I(Age^2) + Ast + 
+                                      continente + current_club_domestic_competition_id, 
                                  data=train_data)
-resumen_rob <- summary(modelo_multiple_robustbase)
+resumen_rob <- summary(modelo_multiple_lmrob)
 resumen_rob
 resumen_rob$r.squared
 resumen_rob$adj.r.squared
 
 #Metricas
-pred_modelo_multiple_robustbase <- augment(modelo_multiple_robustbase, newdata = train_data)
+pred_modelo_multiple_robustbase <- augment(modelo_multiple_lmrob, newdata = train_data)
+
 rmse(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$.estimate
 mae(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$.estimate
 
-pred_modelo_multiple_robustbase <- augment(modelo_multiple_robustbase, newdata = test_data)
+pred_modelo_multiple_robustbase <- augment(modelo_multiple_lmrob, newdata = test_data)
+rmse(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$.estimate
+mae(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$.estimate
+
+
+#Diagnóstico
+datos_augmentados <- augment(modelo_multiple_lmrob)
+ggplot(datos_augmentados, aes(.fitted, .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Residuos vs valores predichos") + 
+  theme_bw()
+ggplot(datos_augmentados, aes(sample = .std.resid)) +
+  stat_qq() +
+  geom_abline() +
+  labs(title = "Normal QQ plot") + 
+  theme_bw()
+ggplot(datos_augmentados, aes(.fitted, sqrt(abs(.std.resid)))) +
+  geom_point() +
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Scale-location plot")
+ggplot(datos_augmentados, aes(.hat, .std.resid)) +
+  geom_vline(size = 2, colour = "white", xintercept = 0) +
+  geom_hline(size = 2, colour = "white", yintercept = 0) +
+  geom_point() + 
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Residual vs leverage")
+plot(modelo_multiple_lmrob)
+
+
+
+# Modelo robusto robustbase lmrob : log(precio)----
+modelo_multiple_lmrob_2 <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                 continente + current_club_domestic_competition_id, 
+                               data=train_data)
+resumen_rob <- summary(modelo_multiple_lmrob_2)
+resumen_rob
+resumen_rob$r.squared
+resumen_rob$adj.r.squared
+
+#Metricas
+pred_modelo_multiple_lmrob_2 <- augment(modelo_multiple_lmrob_2, newdata = train_data)
+
+rmse(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$.estimate
+mae(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$.estimate
+
+pred_modelo_multiple_robustbase <- augment(modelo_multiple_lmrob, newdata = test_data)
 rmse(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$.estimate
 mae(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$.estimate
 
 
 
+# Modelo robusto robustbase lmrob, otras phi: log(precio)----
+modelo_multiple_lmrob_lqq <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                   continente + current_club_domestic_competition_id, 
+                                 data=train_data,
+                           psi = "lqq")
 
-# Modelo robusto MASS
-modelo_multiple_mass <- rlm (formula = precio ~ Gls + 
-                               Ast + 
-                               I(Age^2) +
-                               continente, 
-                             data=train_data)
-summary(modelo_multiple_mass)
+modelo_multiple_lmrob_welsh <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                     continente + current_club_domestic_competition_id, 
+                                   data=train_data,
+                                   psi = "welsh")
+
+modelo_multiple_lmrob_optimal <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                       continente + current_club_domestic_competition_id, 
+                                     data=train_data,
+                                     psi = "optimal")
 
 
+modelo_multiple_lmrob_hampel <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                         continente + current_club_domestic_competition_id, 
+                                       data=train_data,
+                                       psi = "hampel")
 
-# Residuos del modelo lm
-residuos_lm <- residuals(modelo_clasico_gls_age_ast)
+modelo_multiple_lmrob_ggw <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                         continente + current_club_domestic_competition_id, 
+                                       data=train_data,
+                                       psi = "ggw")
 
-# Residuos del modelo rlm
-residuos_rlm <- residuals(modelo_multiple_robustbase)
 
-# Graficar los residuos
-par(mfrow = c(1, 2))
-plot(residuos_lm, main = "Residuos LM")
-plot(residuos_rlm, main = "Residuos RLM")
+modelos <- list(multiple_1 = modelo_clasico_multiple_1, 
+                multiple_2 = modelo_clasico_multiple_2,
+                robusto_2 = modelo_multiple_lmrob_2,
+                robusto_3 = modelo_multiple_lmrob_lqq,
+                robusto_4 = modelo_multiple_lmrob_welsh,
+                robusto_5 = modelo_multiple_lmrob_optimal,
+                robusto_6 = modelo_multiple_lmrob_hampel,
+                robusto_7 = modelo_multiple_lmrob_ggw)
 
-BIC(modelo_clasico_gls_age_ast, modelo_multiple_mass)
+lista_predicciones_testing = map(.x = modelos, .f = augment, newdata = test_data) 
+
+
+metricas1_test = lista_predicciones_testing$multiple_1 %>%  
+  metrics(truth=precio, estimate=.fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas2_test = lista_predicciones_testing$multiple_2 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas3_test = lista_predicciones_testing$robusto_2 %>% 
+  mutate(exp_fitted= exp(.fitted)) %>%
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas4_test = lista_predicciones_testing$robusto_3 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas5_test = lista_predicciones_testing$robusto_4 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas6_test = lista_predicciones_testing$robusto_5 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas7_test = lista_predicciones_testing$robusto_6 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas8_test = lista_predicciones_testing$robusto_7 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas1_test
+metricas2_test
+metricas3_test
+metricas4_test
+metricas5_test
+metricas6_test
+metricas7_test
+metricas8_test
+
+metricas <- rbind(metricas1_test, metricas2_test)
+metricas <- rbind(metricas, metricas3_test)
+metricas <- rbind(metricas, metricas4_test)
+metricas <- rbind(metricas, metricas5_test)
+metricas <- rbind(metricas, metricas6_test)
+metricas <- rbind(metricas, metricas7_test)
+metricas <- rbind(metricas, metricas8_test)
+
+modelitos <- c(rep("Multiple - Precio",3),rep("Multiple - log(Precio)",3),
+               rep("Robusto - log(Precio) - phi = bisqare",3),rep("Robusto - log(Precio) - phi = lqq",3),
+               rep("Robusto - log(Precio) - phi = welsh",3), rep("Robusto - log(Precio) - phi = optimal",3),
+               rep("Robusto - log(Precio) - phi = hampel",3),rep("Robusto - log(Precio) - phi = ggw",3))
+metricas <- cbind(modelitos, metricas)
+metricas
