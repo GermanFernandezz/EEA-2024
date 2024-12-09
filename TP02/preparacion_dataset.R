@@ -73,6 +73,41 @@ merged_data <- merge(players_metrics, players_value,
 # Eliminar los datos que no tiene precio de jugador
 merged_data <- merged_data[!is.na(merged_data$market_value_in_eur),]
 
+
+# Agregar variables Continente----
+
+europa <- c("es ESP", "eng ENG", "pt POR", "no NOR", "ch SUI", "hr CRO", "nl NED", "be BEL", 
+            "de GER", "hu HUN", "sct SCO", "fr FRA", "ie IRL", "nir NIR", "wls WAL", "ua UKR", 
+            "pl POL", "it ITA", "se SWE", "sk SVK", "ro ROU", "il ISR", "dk DEN", "cz CZE", 
+            "gr GRE", "re SRB", "at AUT", "is ISL", "ba BIH", "tr TUR")
+america <- c("br BRA", "co COL", "ar ARG", "uy URU", "ec ECU", "py PAR", "jm JAM", "mx MEX", 
+             "us USA", "gd GRN", "cm CMR")
+africa <- c("eg EGY", "gh GHA", "sn SEN", "ml MLI", "ci CIV", "ng NGA", "gw GNB", "bf BFA",
+            "ga GAB", "dz ALG", "zw ZIM", "cd COD", "za RSA", "ao ANG")
+asia_oceania <- c("jp JPN", "nz NZL")
+
+
+continentes <- data.frame(
+  valor = c(europa, america, africa, asia_oceania),              # Combinar los datos de los dos vectores
+  origen = c(rep("europa", length(europa)),  # Etiquetar de dónde viene cada dato
+             rep("america", length(america)),
+             rep("africa", length(africa)),
+             rep("asia_oceania", length(asia_oceania))))
+
+
+
+for (i in 1:length(merged_data$Nation)){
+  for (j in 1:length(continentes$valor)) {
+    if (merged_data$Nation[i] == continentes$valor[j]){
+      merged_data$continente[i] <- continentes$origen[j]
+    }
+  }
+}
+
+unique(merged_data$continente)
+sum(is.na(merged_data$continente))
+
+
 #Algunos grafiquitos rápidos
 boxplot(merged_data$market_value_in_eur)
 plot(merged_data$Gls, merged_data$market_value_in_eur)
