@@ -512,6 +512,30 @@ ggplot(datos_augmentados, aes(.hat, .std.resid)) +
 plot(modelo_multiple_lmrob)
 
 
+# Modelo robusto robustbase lmrob : precio vs goles----
+
+modelo_multiple_lmrob_goles <- lmrob(formula = precio ~ Gls, data=train_data)
+pred_modelo_multiple_lmrob_goles <- data.frame(
+  Gls = train_data$Gls,
+  precio_pred = predict(modelo_multiple_lmrob_goles, newdata = train_data)
+)
+
+modelo_multiple_lmrob_goles_optimal <- lmrob(formula = precio ~ Gls, data=train_data, psi="optimal")
+pred_modelo_multiple_lmrob_goles_optimal <- data.frame(
+  Gls = train_data$Gls,
+  precio_pred = predict(modelo_multiple_lmrob_goles_optimal, newdata = train_data)
+)
+
+colnames(train_data)[56] <- "Liga"
+
+ggplot(train_data, aes(x = Gls, y = precio)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, color="forestgreen", se = FALSE) +
+  geom_line(data = pred_modelo_multiple_lmrob_goles, aes(x = Gls, y = precio_pred), color = "red") +
+  geom_line(data = pred_modelo_multiple_lmrob_goles_optimal, aes(x = Gls, y = precio_pred), color = "blue") +
+  theme_bw()
+
+
 
 # Modelo robusto robustbase lmrob : log(precio)----
 modelo_multiple_lmrob_2 <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 

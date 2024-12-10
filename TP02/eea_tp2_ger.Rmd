@@ -37,22 +37,123 @@ library(gridExtra)
 library(kableExtra)
 ```
 
+# Objetivo
+
+El fútbol es el deporte más popular, el que tiene un mercado más grande y en el cual el valor de las transferencias de los jugadores es el más alto. En ese sentido, nos proponemos analizar las transferencias y cotizaciones de los jugadores de la liga inglesa, una de las mejores ligas del mundo.
+
+Por este motivo, y haciendo uso de los conocimientos aportados por la materia, optamos por profundizar en el desarrollo de métodos de regresión robustos para hacer análisis predictivos, haciendo foco en la explicabilidad del modelo para predecir las transferencias de los jugadores.
+
+El objetivo del presente trabajo consiste en la utilización distintos métodos robustos para predecir la variable objetivo: el precio de transferencia de los jugadores.
+
+- Observar si el país de origen es una variable explicativa con respecto a la variable objetivo.
+- Identificar si los ratios que demuestran el desempeño de los jugadores generan impacto sobre la transferencia de los jugadores.
+- Utilizar la regresión regresión de mínimos cuadrados ponderados, regresión de mínimos cuadrados robustos (Huber).
+- Comparar el desempeño de los distintos modelos para predecir la variable objetivo.
+
+
 # Introducción
+
+En el método lineal clásico se utiliza el método de cuadrados mínimos para encontrar los parámetros $\beta$.
+
+La función de pérdida que se quiere minimizar es la suma del cuadrado de los residuos.
+
+$$
+g(a, b) = \sum_{i=1}^n \left( Y_i - \left( a + b X_i \right) \right)^2
+$$
+
+En los modelos lineales robustos queremos cambiar la función de perdida tal que:
+- Sea Insensible a valores extremadamente grandes o outliers(o residuos grandes)
+- Crezca menos que mínimos cuadrados cuando miramos lo suficientemente lejos del cero
+- Tenga Alta eficiencia: si los datos de la muestra siguieran el modelo de regresión con errores normales, queremos que el estimador (beta) que el método robusta calcula se parezca al de mínimos cuadrados, por lo que la función de pérdida que el método robusto calcula debería parecerse al de mínimos cuadrado.
+
+
+
+
+$$
+g(a, b) = \sum_{i=1}^n \rho \left( \frac{Y_i - \left( a + b X_i \right)}{s_n} \right)
+$$
+
+donde $\rho$ : R →R es una función acotada, creciente y simétrica alrededor del cero, y $s_n$ es un estimador de escala que juega el papel de σ en el modelo clásico de regresión.
+
+Una posibilidad es ajustar una recta usando un procedimiento de ajuste robusto, por ejemplo un MM-estimador de regresión, propuesto por Yohai [1987]. En R, esto está programado dentro de la rutina lmrob en el paquete robustbase de R. La estimación se hace en tres etapas, se propone un estimador inicial de los parámetros, a partir de él se estima a sn y nalmente se obtienen los estimadores de los parámetros a partir de ellos, minimizando la función objetivo
+
+Existen varias funciones $\rho$ que serán evaluadas en el presente trabajo. Por defecto, robustbase utiliza la bicuadrada (bisquare), pero también se pueden implementar lqq, welsh, optimal, etc.
+
+(VOY A VER SI SE PUEDEN AGREGAR LAS FORMAS DE ESTAS FUNCIONES)
+
+Existen muchas otras propuestas de estimadores robustos para regresión, por ejemplo LMS (least median of squares), LTS (least trimmed squares), τ−estimadores de regresión, y casi todas están implementadas en R.
 
 
 # Dataset
 
+El set de datos consiste en dos bases, ambas obtenidas de Kaggle.
 
+La base de datos con los precios de los jugadores se obtuvo de la web Transfermarkt. Cuenta con 32405 registros, y dos de sus variables son los precios actuales de los jugadores y el precio mas alta alcanzado. Además cuenta con la información del club y liga actual de cada jugador.
 
-# Análisis Exploratorio de Datos
+Las otra base de datos cuenta con las métricas durante la temporada 2023/2023 de los jugadores de las 5 ligas mas importantes del fútbol europeo. Algunas de sus variables son Edad, goles anotados, asistencias, posición dentro del campo de juego, nacionalidad, entre otras.
 
+Ambas bases de datos se unieron por el nombre y apellido del jugador, y el club actual. Adicionalmente, se agregó la variable Continente al dataset final, la cual informa el continente natal de cada jugador.
+
+El dataset se divide en Entrenamiento y Prueba, de manera estratificada según el precio. Se utiliza el siguiente boxplot para generar una nueva categoría que categorice según el precio del jugador.
+
+Luego utilizaremos esta nueva variable para realizar la división del dataset de manera estratificada.
+
+Categorías de la nueva variable
+
+Muy bajo: Menor a mediana (Q2)
+Bajo: entre mediana (Q2) y cuartil superior (Q3)
+Medio: entre cuartil superior (Q3) y límite superior (Q3 + 1.5 x IQR)
+Alto: entre limite superior y €100.000.000
+Muy Alto: mayor a €100.000.000 (representa los 10 jugadores mas caros)
+
+El objetivo es que quedan estratificados los jugadores mas caros u outliers, por eso no se realiza una división por debajo de Q2.
 ```{r, message=FALSE, warning=FALSE}
 # Carga de datset
 df <- as.data.frame(read.csv("dataset.csv"))
 df <- as.data.frame(df)
 df <- na.omit(df)
 colnames(df)[colnames(df) == "market_value_in_eur"] <- "precio"
+
+# Agregar nueva variable que tenga en cuenta los precios de los jugadores y poder hacer un split 
+# test-train estratificado
+caja_precios <- boxplot(df$precio)
+caja_precios$stats
+
+df$precio_cat <- NA
+
+for (i in 1:length(df$precio)) {
+  if (df$precio[i] >= 100000000) { 
+    df$precio_cat[i] <- "muy_alto"}
+  if (df$precio[i] < 100000000 && df$precio[i] >= caja_precios$stats[5]) {
+    df$precio_cat[i] <- "alto"}
+  if (df$precio[i] < caja_precios$stats[5] && df$precio[i] >= caja_precios$stats[4]) {
+    df$precio_cat[i] <- "medio"}
+  if (df$precio[i] < caja_precios$stats[4] && df$precio[i] >= caja_precios$stats[3]) {
+    df$precio_cat[i] <- "bajo"}
+  if (df$precio[i] < caja_precios$stats[3]){
+    df$precio_cat[i] <- "muy_bajo"}
+}
+
+# Suponiendo que `df$clase` es la variable categórica
+set.seed(28749658)  # Fijar semilla para reproducibilidad
+
+# Crear índices estratificados basados en la variable `clase`
+train_indices <- createDataPartition(df$precio_cat, p = 0.7, list = FALSE)  # 70% entrenamiento
+
+# Dividir los datos
+train_data <- df[train_indices, ]
+test_data <- df[-train_indices, ]
+
+# Verificar la distribución de clases
+table(train_data$precio_cat)
+table(test_data$precio_cat)
 ```
+
+# Análisis Exploratorio de Datos
+
+
+
+## Gráficos de barras de algunas variables categóricas
 
 ```{r, message=FALSE, warning=FALSE}
 colnames(df)[colnames(df) == "market_value_in_eur"] <- "precio"
@@ -99,6 +200,23 @@ grafico4 <- ggplot(df, aes(x=foot, fill = foot)) +
 grid.arrange(grafico1, grafico2, grafico3, grafico4,nrow = 2)
 ```
 
+### Jugadores por continente
+
+Como era de esperarse, predominan los jugadores europeos. Los americanos y africanos están casi en igual medida, siendo un poco mayor los americanos. Asia y Oceanía en conjunto aportan solo una mínima cantidad.
+
+### Cantidad de jugadores de liga
+
+Todas las ligas están igual de representadas en el dataset, con lo cual el análisis del precio de jugadores según la liga será de interés.
+
+
+### Jugadores por posición
+
+Predominan los jugadores que se desempeñan en el centro del campo, como defensores centrales o mediocampistas centrales o mixtos. Esto tiene cierta lógica ya que 3 o 4 jugadores de campo siempre se desempeñan en estas posiciones. Llama la atención la alta proporción de centrodelanteros, ya que los equipos suelen usar un colo jugador en esa posición.
+
+### Jugadores por pie hábil.
+
+Como era de esperarse, mas de la mitad de los jugadores son derechos. Sin embargo, comparado con la proporción de personas diestras en el mundo (85%), la cantidad de jugadores zurdos es bastante mayor a estar proporción.
+
 ## Correlograma
 
 ```{r, message=FALSE, warning=FALSE}
@@ -115,44 +233,13 @@ df %>%
 
 ```
 
-```{r, message=FALSE, warning=FALSE}
-# Agregar nueva variable que tenga en cuenta los precios de los jugadores y poder hacer un split 
-# test-train estratificado
-caja_precios <- boxplot(df$precio)
-caja_precios$stats
+alta a moderada correlación positiva entre goles y precio, moderada correlacion positiva entre asistencia y precio.
 
-df$precio_cat <- NA
+baja correlación pero claramente negativa entre edad y precio.
 
-for (i in 1:length(df$precio)) {
-  if (df$precio[i] >= 100000000) { 
-    df$precio_cat[i] <- "muy_alto"}
-  if (df$precio[i] < 100000000 && df$precio[i] >= caja_precios$stats[5]) {
-    df$precio_cat[i] <- "alto"}
-  if (df$precio[i] < caja_precios$stats[5] && df$precio[i] >= caja_precios$stats[4]) {
-    df$precio_cat[i] <- "medio"}
-  if (df$precio[i] < caja_precios$stats[4] && df$precio[i] >= caja_precios$stats[3]) {
-    df$precio_cat[i] <- "bajo"}
-  if (df$precio[i] < caja_precios$stats[3]){
-    df$precio_cat[i] <- "muy_bajo"}
-}
+Las ligas española y británica parecen tener los jugadores mejor cotizados, lo cual parece entendible siendo que son las ligas mas poderosas de la actualidad, y que tiene dos de los clubes con mayor podería económico: Real Madrid y Manchester City.
 
 
-table(df$precio_cat)
-
-# Suponiendo que `df$clase` es la variable categórica
-set.seed(28749658)  # Fijar semilla para reproducibilidad
-
-# Crear índices estratificados basados en la variable `clase`
-train_indices <- createDataPartition(df$precio_cat, p = 0.7, list = FALSE)  # 70% entrenamiento
-
-# Dividir los datos
-train_data <- df[train_indices, ]
-test_data <- df[-train_indices, ]
-
-# Verificar la distribución de clases
-table(train_data$precio_cat)
-table(test_data$precio_cat)
-```
 ## Jugadores mas caros
 
 Los 10 jugadores mas caros
@@ -204,6 +291,8 @@ Precio = Goles
 modelo_clasico_goles = lm(data = train_data, formula = precio ~ Gls)
 summary(modelo_clasico_goles)
 ```
+
+Por cada gol anotado el precio del jugador aumenta en €3.267.375
 
 ```{r, message=FALSE, warning=FALSE}
 ggplot(df, aes(x= Gls, y=precio))+
@@ -465,7 +554,53 @@ grid.arrange(g9, g10, g11, g12, nrow=2)
 
 # Regresión Lineal Múltiple Robusta
 
-## Primero Modelo Robusto
+## Modelo "Goles son amores ROBUSTOS"
+
+```{r, message=FALSE, warning=FALSE}
+modelo_lmrob_goles <- lmrob(formula = precio ~ Gls, data=train_data)
+pred_modelo_lmrob_goles <- data.frame(
+  Gls = train_data$Gls,
+  precio_pred = predict(modelo_lmrob_goles, newdata = train_data)
+)
+summary(modelo_lmrob_goles)
+```
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(train_data, aes(x = Gls, y = precio)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ x, color="forestgreen", se = FALSE) +
+  geom_line(data = pred_modelo_lmrob_goles, aes(x = Gls, y = precio_pred), color = "red") +
+  theme_bw()
+```
+
+### Evaluación y comparación de contra modelos no robustos
+
+```{r, message=FALSE, warning=FALSE}
+modelos_simples <- list(simple_1 = modelo_clasico_goles, 
+                simple_2 = modelo_lmrob_goles)
+
+lista_predicciones_testing = map(.x = modelos_simples, .f = augment, newdata = test_data) 
+
+
+goles_clasico_test = lista_predicciones_testing$simple_1 %>%  
+  metrics(truth=precio, estimate=.fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+goles_robusto_test = lista_predicciones_testing$simple_2 %>%  
+  metrics(truth=precio, estimate=.fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+
+metrica_goles <- rbind(goles_clasico_test, goles_robusto_test)
+
+modelitos_simples <- c(rep("Simple - Goles",3),rep("Robusto - Goles",3))
+metricas <- cbind(modelitos_simples, metrica_goles)
+kable(metricas)
+```
+
+Disminuye el MAE (es mas que nada a modo ilustrativo y pedagógico, para que se vea sobre todo el gráfico anterior como se ajusta el modelo robusto a los datos despreciando los outliers)
+
+## Primero Modelo Multiple Robusto
 
 $log(Precio)$ = $Goles$ + $Edad$ + $Edad^2$ + $Asistencias$ + $Continente$ $de$ $nacimiento$ $del$ $jugador$ + $Liga$ $donde$ $juega$
 
@@ -473,9 +608,13 @@ $log(Precio)$ = $Goles$ + $Edad$ + $Edad^2$ + $Asistencias$ + $Continente$ $de$ 
 modelo_multiple_lmrob_2 <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
                                  continente + current_club_domestic_competition_id, 
                                data=train_data)
+summary(modelo_multiple_lmrob_2)
 ```
 
+Intepretación de estimadores beta
+
 ### Diagnóstico
+
 ```{r, message=FALSE, warning=FALSE}
 #Diagnóstico
 datos_augmentados <- augment(modelo_multiple_lmrob_2)
@@ -612,3 +751,6 @@ modelitos <- c(rep("Multiple - Precio",3),rep("Multiple - log(Precio)",3),
 metricas <- cbind(modelitos, metricas)
 kable(metricas)
 ```
+
+En todos los robustos mejora el MAE, en el optimal es donde mas mejora.
+
