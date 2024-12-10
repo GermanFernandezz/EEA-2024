@@ -195,7 +195,9 @@ kable(mas_barato)
 
 # Regresión Lineal Simple
 
-## Precio vs. Goles
+## Modelo "Goles son amores"
+
+Precio = Goles
 
 
 ```{r, message=FALSE, warning=FALSE}
@@ -262,7 +264,9 @@ g4 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
 grid.arrange(g1, g2, g3, g4, nrow=2)
 ```
 
-## Precio vs. Edad
+## Modelo "La edad NO es lo de menos"
+
+Precio = $Edad$ + $Edad^2$
 
 ```{r, message=FALSE, warning=FALSE}
 modelo_clasico_edad = modelo_clasico_edad2 = lm(data = train_data, formula = precio ~ Age + I(Age^2))
@@ -333,7 +337,9 @@ grid.arrange(g1, g2, g3, g4, nrow=2)
 
 # Regresión Lineal Múltiple
 
-## Precio vs. Goles + Edad + Asistencias + Continente de nacimiento del jugador + Liga donde juega
+## Modelo "Ahora va en serio"
+
+$Precio$ = $Goles$ + $Edad$ + $Edad^2$ + $Asistencias$ + $Continente$ $de$ $nacimiento$ $del$ $jugador$ + $Liga$ $donde$ $juega$
 
 ```{r, message=FALSE, warning=FALSE}
 modelo_clasico_multiple_1 = lm(data = train_data, 
@@ -393,11 +399,9 @@ g8 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
 grid.arrange(g5, g6, g7, g8, nrow=2)
 ```
 
+## Modelo "Ahora va en serio 2"
 
-
-
-
-## log(Precio) vs. Goles + Edad + Asistencias + Continente de nacimiento del jugador + Liga donde juega
+$log(Precio)$ = $Goles$ + $Edad$ + $Edad^2$ + $Asistencias$ + $Continente$ $de$ $nacimiento$ $del$ $jugador$ + $Liga$ $donde$ $juega$
 
 ```{r, message=FALSE, warning=FALSE}
 modelo_clasico_multiple = lm(data = train_data, 
@@ -461,17 +465,150 @@ grid.arrange(g9, g10, g11, g12, nrow=2)
 
 # Regresión Lineal Múltiple Robusta
 
-## Primero Modelo robusto
+## Primero Modelo Robusto
+
+$log(Precio)$ = $Goles$ + $Edad$ + $Edad^2$ + $Asistencias$ + $Continente$ $de$ $nacimiento$ $del$ $jugador$ + $Liga$ $donde$ $juega$
+
 ```{r, message=FALSE, warning=FALSE}
 modelo_multiple_lmrob_2 <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
                                  continente + current_club_domestic_competition_id, 
                                data=train_data)
 ```
 
-
 ### Diagnóstico
 ```{r, message=FALSE, warning=FALSE}
-plot(modelo_multiple_lmrob_2)
+#Diagnóstico
+datos_augmentados <- augment(modelo_multiple_lmrob_2)
+datos_augmentados$.std.resid <- datos_augmentados$.resid/(modelo_multiple_lmrob_2$scale*sqrt(1-hatvalues(modelo_multiple_lmrob_2)))
+datos_augmentados$.hat <- hatvalues(modelo_multiple_lmrob_2)
+g13 <- ggplot(datos_augmentados, aes(.fitted, .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Residuos vs valores predichos") + 
+  theme_bw()
+g14 <- ggplot(datos_augmentados, aes(sample = .std.resid)) +
+  stat_qq() +
+  geom_abline() +
+  labs(title = "Normal QQ plot") + 
+  theme_bw()
+g15 <- ggplot(datos_augmentados, aes(.fitted, sqrt(abs(.std.resid)))) +
+  geom_point() +
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Scale-location plot")
+g16 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
+  geom_vline(size = 2, colour = "white", xintercept = 0) +
+  geom_hline(size = 2, colour = "white", yintercept = 0) +
+  geom_point() + 
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Residual vs leverage")
+grid.arrange(g13, g14, g15, g16, nrow = 2)
 ```
 
+## Modelos Robustos con otras funciones psi
 
+Se aplica la misma fórmula que el modelo anterior pero en lugar de usar la función $\psi$ por defecto bisqueare hacemos 5 modelos nuevos usando en cada uno diferentes $\psi$: lqq, welsh, optimal, hampel y ggw.
+
+### Evaluación de todos los modelos
+
+```{r, message=FALSE, warning=FALSE}
+modelo_multiple_lmrob_lqq <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                   continente + current_club_domestic_competition_id, 
+                                 data=train_data,
+                           psi = "lqq")
+
+modelo_multiple_lmrob_welsh <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                     continente + current_club_domestic_competition_id, 
+                                   data=train_data,
+                                   psi = "welsh")
+
+modelo_multiple_lmrob_optimal <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                       continente + current_club_domestic_competition_id, 
+                                     data=train_data,
+                                     psi = "optimal")
+
+
+modelo_multiple_lmrob_hampel <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                         continente + current_club_domestic_competition_id, 
+                                       data=train_data,
+                                       psi = "hampel")
+
+modelo_multiple_lmrob_ggw <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                         continente + current_club_domestic_competition_id, 
+                                       data=train_data,
+                                       psi = "ggw")
+
+
+modelos <- list(multiple_1 = modelo_clasico_multiple_1, 
+                multiple_2 = modelo_clasico_multiple,
+                robusto_2 = modelo_multiple_lmrob_2,
+                robusto_3 = modelo_multiple_lmrob_lqq,
+                robusto_4 = modelo_multiple_lmrob_welsh,
+                robusto_5 = modelo_multiple_lmrob_optimal,
+                robusto_6 = modelo_multiple_lmrob_hampel,
+                robusto_7 = modelo_multiple_lmrob_ggw)
+
+lista_predicciones_testing = map(.x = modelos, .f = augment, newdata = test_data) 
+
+
+metricas1_test = lista_predicciones_testing$multiple_1 %>%  
+  metrics(truth=precio, estimate=.fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas2_test = lista_predicciones_testing$multiple_2 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas3_test = lista_predicciones_testing$robusto_2 %>% 
+  mutate(exp_fitted= exp(.fitted)) %>%
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas4_test = lista_predicciones_testing$robusto_3 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas5_test = lista_predicciones_testing$robusto_4 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas6_test = lista_predicciones_testing$robusto_5 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas7_test = lista_predicciones_testing$robusto_6 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas8_test = lista_predicciones_testing$robusto_7 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+
+
+metricas <- rbind(metricas1_test, metricas2_test)
+metricas <- rbind(metricas, metricas3_test)
+metricas <- rbind(metricas, metricas4_test)
+metricas <- rbind(metricas, metricas5_test)
+metricas <- rbind(metricas, metricas6_test)
+metricas <- rbind(metricas, metricas7_test)
+metricas <- rbind(metricas, metricas8_test)
+
+modelitos <- c(rep("Multiple - Precio",3),rep("Multiple - log(Precio)",3),
+               rep("Robusto - log(Precio) - psi = bisqare",3),
+               rep("Robusto - log(Precio) - psi = lqq",3),
+               rep("Robusto - log(Precio) - psi = welsh",3), 
+               rep("Robusto - log(Precio) - psi = optimal",3),
+               rep("Robusto - log(Precio) - psi = hampel",3),
+               rep("Robusto - log(Precio) - psi = ggw",3))
+metricas <- cbind(modelitos, metricas)
+kable(metricas)
+```

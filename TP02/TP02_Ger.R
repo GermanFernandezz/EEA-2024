@@ -272,8 +272,7 @@ modelo_clasico_edad2 = lm(data = train_data, formula = precio ~ Age + I(Age^2))
 coef_modelo_clasico_edad2 = tidy(modelo_clasico_edad2, conf.int = TRUE, conf.level = 0.95)
 coef_modelo_clasico_edad2
 
-# Observamos los valores de la evaluación global
-glance(modelo_clasico_edad2)
+
 
 # ---------------
 
@@ -291,7 +290,7 @@ glance(modelo_clasico_g_a)
 
 # ------------------------------
 
-# Multiple: Goles + Edad + Asistencia + continenete
+# Multiple: Goles + Edad + Asistencia + continente
 
 # Fiteamos el modelo multiple
 modelo_clasico_gls_age_ast = lm(data = train_data, 
@@ -427,13 +426,21 @@ ggplot(datos_augmentados, aes(.hat, .std.resid)) +
 # -----------------------------------
 
 # Metricas de ambos modelos clásicos multiples en TRAIN
-metricas1 = metrics(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted) %>% 
-  mutate(.estimate = round(.estimate, 4))
-metricas1
+modelos <- list(multiple_1 = modelo_clasico_multiple_1, multiple_2 = modelo_clasico_multiple_2)
 
-metricas2 = metrics(data = pred_modelo_clasico_multiple_2, truth = precio, estimate = .fitted) %>% 
-  mutate(.estimate = round(.estimate, 4))
-metricas2
+lista_predicciones_testing = map(.x = modelos, .f = augment, newdata = train_data) 
+
+metricas1_train = lista_predicciones_testing$multiple_1 %>%  
+  metrics(truth=precio, estimate=.fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas2_train = lista_predicciones_testing$multiple_2 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas1_train
+metricas2_train
 
 
 # Metricas de ambos modelos clásicos multiples en TEST
@@ -477,6 +484,8 @@ mae(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$
 
 #Diagnóstico
 datos_augmentados <- augment(modelo_multiple_lmrob)
+datos_augmentados$.std.resid <- datos_augmentados$.resid/(modelo_multiple_lmrob$scale*sqrt(1-hatvalues(modelo_multiple_lmrob)))
+datos_augmentados$.hat <- hatvalues(modelo_multiple_lmrob)
 ggplot(datos_augmentados, aes(.fitted, .resid)) +
   geom_point() +
   geom_hline(yintercept = 0) +
@@ -516,12 +525,41 @@ resumen_rob$adj.r.squared
 #Metricas
 pred_modelo_multiple_lmrob_2 <- augment(modelo_multiple_lmrob_2, newdata = train_data)
 
-rmse(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$.estimate
-mae(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$.estimate
+rmse(data = pred_modelo_multiple_lmrob_2, truth = precio, estimate = .fitted)$.estimate
+mae(data = pred_modelo_multiple_lmrob_2, truth = precio, estimate = .fitted)$.estimate
 
-pred_modelo_multiple_robustbase <- augment(modelo_multiple_lmrob, newdata = test_data)
-rmse(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$.estimate
-mae(data = pred_modelo_multiple_robustbase, truth = precio, estimate = .fitted)$.estimate
+pred_modelo_multiple_lmrob_2 <- augment(modelo_multiple_lmrob_2, newdata = test_data)
+rmse(data = pred_modelo_multiple_lmrob_2, truth = precio, estimate = .fitted)$.estimate
+mae(data = pred_modelo_multiple_lmrob_2, truth = precio, estimate = .fitted)$.estimate
+
+
+#Diagnóstico
+datos_augmentados <- augment(modelo_multiple_lmrob_2)
+datos_augmentados$.std.resid <- datos_augmentados$.resid/(modelo_multiple_lmrob_2$scale*sqrt(1-hatvalues(modelo_multiple_lmrob_2)))
+datos_augmentados$.hat <- hatvalues(modelo_multiple_lmrob_2)
+ggplot(datos_augmentados, aes(.fitted, .resid)) +
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  geom_smooth(se = FALSE) +
+  labs(title = "Residuos vs valores predichos") + 
+  theme_bw()
+ggplot(datos_augmentados, aes(sample = .std.resid)) +
+  stat_qq() +
+  geom_abline() +
+  labs(title = "Normal QQ plot") + 
+  theme_bw()
+ggplot(datos_augmentados, aes(.fitted, sqrt(abs(.std.resid)))) +
+  geom_point() +
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Scale-location plot")
+ggplot(datos_augmentados, aes(.hat, .std.resid)) +
+  geom_vline(size = 2, colour = "white", xintercept = 0) +
+  geom_hline(size = 2, colour = "white", yintercept = 0) +
+  geom_point() + 
+  geom_smooth(se = FALSE) + 
+  theme_bw() +
+  labs(title = "Residual vs leverage")
 
 
 
@@ -627,3 +665,9 @@ modelitos <- c(rep("Multiple - Precio",3),rep("Multiple - log(Precio)",3),
                rep("Robusto - log(Precio) - phi = hampel",3),rep("Robusto - log(Precio) - phi = ggw",3))
 metricas <- cbind(modelitos, metricas)
 metricas
+
+
+library(car)
+vif(lm(precio ~ Gls + I(Age^2) + Ast + 
+         continente + current_club_domestic_competition_id, 
+       data = train_data))
