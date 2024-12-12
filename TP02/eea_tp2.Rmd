@@ -58,7 +58,7 @@ En el método lineal clásico se utiliza el método de cuadrados mínimos para e
 La función de pérdida que se quiere minimizar es la suma del cuadrado de los residuos.
 
 $$
-g(a, b) = \sum_{i=1}^n \left( Y_i - \left( a + b X_i \right) \right)^2
+g(a, b) = \sum_{i=1}^n \left( Y_i - \left( a + b X_i \right) \right)^2  \quad \text{(1)}
 $$
 
 En los modelos lineales robustos queremos cambiar la función de perdida tal que:
@@ -69,39 +69,87 @@ En los modelos lineales robustos queremos cambiar la función de perdida tal que
 
 
 $$
-g(a, b) = \sum_{i=1}^n \rho \left( \frac{Y_i - \left( a + b X_i \right)}{s_n} \right)
+g(a, b) = \sum_{i=1}^n \rho \left( \frac{Y_i - \left( a + b X_i \right)}{s_n} \right)   \quad \text{(2)} 
 $$
 
 donde $\rho$ : R →R es una función acotada, creciente y simétrica alrededor del cero, y $s_n$ es un estimador de escala que juega el papel de σ en el modelo clásico de regresión.
 
-Una posibilidad es ajustar una recta usando un procedimiento de ajuste robusto, por ejemplo un MM-estimador de regresión, propuesto por Yohai [1987]. En R, esto está programado dentro de la rutina lmrob en el paquete robustbase de R. La estimación se hace en tres etapas, se propone un estimador inicial de los parámetros, a partir de él se estima a sn y nalmente se obtienen los estimadores de los parámetros a partir de ellos, minimizando la función objetivo
+Una posibilidad es ajustar una recta usando un procedimiento de ajuste robusto, por ejemplo un MM-estimador de regresión, propuesto por Yohai [1987]. En R, esto está programado dentro de la rutina lmrob en el paquete robustbase de R. La estimación se hace en tres etapas, se propone un estimador inicial de los parámetros, a partir de él se estima a sn y manualmente se obtienen los estimadores de los parámetros a partir de ellos, minimizando la función objetivo
 
 Existen varias funciones $\rho$ que serán evaluadas en el presente trabajo. Por defecto, robustbase utiliza la bicuadrada (bisquare), pero también se pueden implementar lqq, welsh, optimal, etc.
 
-(VOY A VER SI SE PUEDEN AGREGAR LAS FORMAS DE ESTAS FUNCIONES)
+Robustbase utiliza el algoritmo Iteratively Reweighted Least Squares (IRWLS) para estimar los parámetros $\beta$. El proceso consiste en la siguientes etapas:
 
-Las funciones $\rho$ más comunes son:
+1. Inicializar el proceso utilizando un estimación inicial de a y b utilizando el método de cuadrados mínimos.
+
+2. Derivar la función (2) respecto a los parámetros a y b:
+$$
+\frac{\partial g}{\partial a} = \sum_{i=1}^{n} \psi \left(\frac{Y_i - (a + bX_i)}{s_n} \right) \cdot \frac{-1}{s_n} \quad \text{(3)}
+$$
+$$
+\frac{\partial g}{\partial b} = \sum_{i=1}^{n} \psi \left(\frac{Y_i - (a + bX_i)}{s_n} \right) \cdot \frac{-X_i}{s_n} \quad \text{(4)}
+$$
+
+donde 
+
+$$
+\frac{d \rho(x)}{dx} = \psi(x) \quad \text{(5)}
+$$
+
+3. Se calculan los pesos de cada observacion
+
+$$
+w_i = \frac{\psi \left(\frac{Y_i - (a + bX_i)}{s} \right)}{\frac{Y_i - (a + bX_i)}{s}} \quad \text{(6)}
+$$
+
+4. Se multiplica a cada observación por su respectivo peso.
+
+5. Se vuelven a estimar los parámetros a y b con una regresión ponderada.
+
+Se repiten los pases hasta no observar mas mejoras o hasta un máximo de iteraciones.
+
+A continuación de muestras Las funciones $\rho$ más comunes y como se comportan los pesos de las mismas.
 
 1. Bisquare (Tukey):
 $$
 \rho(x) = \begin{cases}
 1 - (1 - (x/k)^2)^3 & \text{si } |x| \leq k \\
 1 & \text{si } |x| > k
-\end{cases}
+\end{cases} \quad \text{(7)}
 $$
+```{r, message=FALSE, warning=FALSE}
+# set margins for plots
+options(SweaveHooks=list(fig=function() par(mar=c(3,3,1.4,0.7),
+                                            mgp=c(1.5, 0.5, 0))))
+## x axis for plots:
+x. <- seq(-5, 10, length.out = 1501)
+source(system.file("xtraR/plot-psiFun.R", package = "robustbase", mustWork=TRUE))
+getOption("SweaveHooks")[["fig"]]()
+p.psiFun(x., "biweight", par = 4.685)
+```
 
 2. Huber:
 $$
 \rho(x) = \begin{cases}
 \frac{x^2}{2} & \text{si } |x| \leq k \\
 k|x| - \frac{k^2}{2} & \text{si } |x| > k
-\end{cases}
+\end{cases} \quad \text{(8)}
 $$
+
+```{r, message=FALSE, warning=FALSE}
+getOption("SweaveHooks")[["fig"]]()
+plot(huberPsi, x., ylim=c(-1.4, 5), leg.loc="topright", main=FALSE)
+```
 
 3. Welsh:
 $$
-\rho(x) = 1 - \exp(-x^2/k^2)
+\rho(x) = 1 - \exp(-x^2/k^2) \quad \text{(9)}
 $$
+
+```{r, message=FALSE, warning=FALSE}
+getOption("SweaveHooks")[["fig"]]()
+p.psiFun(x., "Welsh", par = 2.11)
+```
 
 4. Hampel:
 $$
@@ -110,8 +158,15 @@ $$
 a|x| - \frac{a^2}{2} & \text{si } a < |x| \leq b \\
 \frac{a(c|x| - x^2/2 - bc + b^2/2)}{c-b} & \text{si } b < |x| \leq c \\
 a(c - \frac{b}{2}) & \text{si } |x| > c
-\end{cases}
+\end{cases} \quad \text{(10)}
 $$
+
+```{r, message=FALSE, warning=FALSE}
+getOption("SweaveHooks")[["fig"]]()
+## see also hampelPsi
+p.psiFun(x., "Hampel", par = ## Default, but rounded:
+           round(c(1.5, 3.5, 8) * 0.9016085, 1))
+```
 
 5. LQQ (Linearly Quadratically Quadratic):
 $$
@@ -120,8 +175,23 @@ $$
 c_1|x| - \frac{c_1^2}{2} & \text{si } c_1 < |x| \leq c_2 \\
 \frac{(c_3|x| - x^2/2)}{c_3-c_2} & \text{si } c_2 < |x| \leq c_3 \\
 c_3 & \text{si } |x| > c_3
+\end{cases} \quad \text{(11)}
+$$
+
+```{r, message=FALSE, warning=FALSE}
+getOption("SweaveHooks")[["fig"]]()
+p.psiFun(x., "LQQ", par = c(-.5,1.5,.95,NA))
+```
+
+6. Optimal
+$$
+\psi(x) = \begin{cases} 
+x & \text{si } |x| \leq a \\
+a \cdot \text{sign}(x) \cdot \left(1 - \left(\frac{|x| - a}{b - a}\right)^2\right)^2 & \text{si } b < |x| \leq c \\
+0 & \text{si } |x| > c 
 \end{cases}
 $$
+
 
 Donde $k$, $a$, $b$, $c$, $c_1$, $c_2$ y $c_3$ son constantes que determinan los puntos de quiebre y la forma de cada función.
 
@@ -195,8 +265,6 @@ table(test_data$precio_cat)
 
 # Análisis Exploratorio de Datos
 
-
-
 ## Gráficos de barras de algunas variables categóricas
 
 ```{r, message=FALSE, warning=FALSE}
@@ -251,7 +319,6 @@ Como era de esperarse, predominan los jugadores europeos. Los americanos y afric
 ### Cantidad de jugadores de liga
 
 Todas las ligas están igual de representadas en el dataset, con lo cual el análisis del precio de jugadores según la liga será de interés.
-
 
 ### Jugadores por posición
 
@@ -338,13 +405,10 @@ kable(mas_barato)
 
 Precio = Goles
 
-
 ```{r, message=FALSE, warning=FALSE}
 modelo_clasico_goles = lm(data = train_data, formula = precio ~ Gls)
 summary(modelo_clasico_goles)
 ```
-
-Por cada gol anotado el precio del jugador aumenta en €3.267.375
 
 ```{r, message=FALSE, warning=FALSE}
 ggplot(df, aes(x= Gls, y=precio))+
@@ -353,27 +417,6 @@ ggplot(df, aes(x= Gls, y=precio))+
   geom_smooth(method = "lm", formula = y ~ x, color="forestgreen", se = FALSE)
 ```
 
-
-### Evaluación
-
-#### Datos de entrenamiento
-```{r, message=FALSE, warning=FALSE}
-pred_modelo_clasico_goles <- augment(modelo_clasico_goles, newdata = train_data)
-cat("RMSE: ", rmse(data = pred_modelo_clasico_goles, truth = precio, estimate = .fitted)$.estimate)
-```
-```{r, message=FALSE, warning=FALSE}
-cat("MAE: ", mae(data = pred_modelo_clasico_goles, truth = precio, estimate = .fitted)$.estimate)
-```
-
-#### Datos de prueba
-
-```{r, message=FALSE, warning=FALSE}
-pred_modelo_clasico_goles <- augment(modelo_clasico_goles, newdata = test_data)
-cat("RMSE: ", rmse(data = pred_modelo_clasico_goles, truth = precio, estimate = .fitted)$.estimate)
-```
-```{r, message=FALSE, warning=FALSE}
-cat("MAE: ", mae(data = pred_modelo_clasico_goles, truth = precio, estimate = .fitted)$.estimate)
-```
 
 ### Diagnóstico
 
@@ -405,6 +448,12 @@ g4 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
 grid.arrange(g1, g2, g3, g4, nrow=2)
 ```
 
+#### Diagnóstico de Residuos
+- El gráfico de residuos vs valores predichos muestra un patrón de embudo, indicando heterocedasticidad
+- El QQ-plot muestra desviaciones significativas de la normalidad, especialmente en las colas
+- El Scale-location plot confirma la heterocedasticidad, con mayor variabilidad en los valores predichos más altos
+- El gráfico de leverage muestra varios puntos con alta influencia que podrían estar afectando el modelo
+
 #### Interpretación del Modelo
 - El modelo establece una relación lineal simple entre el precio del jugador y los goles anotados
 - Por cada gol anotado, el precio del jugador aumenta en €3,267,375
@@ -413,6 +462,24 @@ grid.arrange(g1, g2, g3, g4, nrow=2)
 - El R² ajustado es 0.2985, lo que indica que el modelo explica aproximadamente el 30% de la variabilidad en los precios
 
 #### Evaluación del Rendimiento
+
+##### Datos de entrenamiento
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_goles <- augment(modelo_clasico_goles, newdata = train_data)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_goles, truth = precio, estimate = .fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_goles, truth = precio, estimate = .fitted)$.estimate)
+```
+
+##### Datos de prueba
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_goles <- augment(modelo_clasico_goles, newdata = test_data)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_goles, truth = precio, estimate = .fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_goles, truth = precio, estimate = .fitted)$.estimate)
+```
 - En datos de entrenamiento:
   - RMSE: 15,388,866
   - MAE: 9,179,813
@@ -420,12 +487,6 @@ grid.arrange(g1, g2, g3, g4, nrow=2)
   - RMSE: 17,503,869
   - MAE: 9,732,598
 - La diferencia relativamente pequeña entre los errores de entrenamiento y prueba sugiere que el modelo no está sobreajustado
-
-#### Diagnóstico de Residuos
-- El gráfico de residuos vs valores predichos muestra un patrón de embudo, indicando heterocedasticidad
-- El QQ-plot muestra desviaciones significativas de la normalidad, especialmente en las colas
-- El Scale-location plot confirma la heterocedasticidad, con mayor variabilidad en los valores predichos más altos
-- El gráfico de leverage muestra varios puntos con alta influencia que podrían estar afectando el modelo
 
 #### Limitaciones del Modelo
 - La relación lineal simple puede ser demasiado básica para capturar la complejidad del precio de los jugadores
@@ -453,27 +514,6 @@ ggplot(df, aes(x= Age, y=precio))+
 
 ```{r, message=FALSE, warning=FALSE}
 cat("A partir de los", round(5113615/(2*110147),0), "años, el precio de los jugadores comienza a disminuir")
-```
-
-### Evaluación
-
-#### Datos de entrenamiento
-```{r, message=FALSE, warning=FALSE}
-pred_modelo_clasico_edad <- augment(modelo_clasico_edad, newdata = train_data)
-cat("RMSE: ", rmse(data = pred_modelo_clasico_edad, truth = precio, estimate = .fitted)$.estimate)
-```
-```{r, message=FALSE, warning=FALSE}
-cat("MAE: ", mae(data = pred_modelo_clasico_edad, truth = precio, estimate = .fitted)$.estimate)
-```
-
-#### Datos de prueba
-
-```{r, message=FALSE, warning=FALSE}
-pred_modelo_clasico_edad <- augment(modelo_clasico_edad, newdata = test_data)
-cat("RMSE: ", rmse(data = pred_modelo_clasico_edad, truth = precio, estimate = .fitted)$.estimate)
-```
-```{r, message=FALSE, warning=FALSE}
-cat("MAE: ", mae(data = pred_modelo_clasico_edad, truth = precio, estimate = .fitted)$.estimate)
 ```
 
 ### Diagnóstico
@@ -506,6 +546,12 @@ g4 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
 grid.arrange(g1, g2, g3, g4, nrow=2)
 ```
 
+#### Diagnóstico de Residuos
+- El gráfico de residuos vs valores predichos muestra un patrón de embudo similar al modelo anterior
+- El QQ-plot muestra desviaciones significativas de la normalidad, especialmente en las colas superiores
+- El Scale-location plot indica heterocedasticidad
+- El gráfico de leverage muestra algunos puntos influyentes, aunque menos pronunciados que en el modelo de goles
+
 #### Interpretación del Modelo
 - El modelo establece una relación cuadrática entre el precio del jugador y su edad
 - El precio aumenta con la edad hasta los 23 años, punto a partir del cual comienza a disminuir
@@ -517,6 +563,24 @@ grid.arrange(g1, g2, g3, g4, nrow=2)
 - El R² ajustado es 0.04853, lo que indica que el modelo explica solo aproximadamente el 5% de la variabilidad en los precios
 
 #### Evaluación del Rendimiento
+
+##### Datos de entrenamiento
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_edad <- augment(modelo_clasico_edad, newdata = train_data)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_edad, truth = precio, estimate = .fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_edad, truth = precio, estimate = .fitted)$.estimate)
+```
+
+##### Datos de prueba
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_edad <- augment(modelo_clasico_edad, newdata = test_data)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_edad, truth = precio, estimate = .fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_edad, truth = precio, estimate = .fitted)$.estimate)
+```
 - En datos de entrenamiento:
   - RMSE: 17,914,627
   - MAE: 10,519,126
@@ -524,12 +588,6 @@ grid.arrange(g1, g2, g3, g4, nrow=2)
   - RMSE: 18,482,683
   - MAE: 10,655,848
 - Los errores son mayores que en el modelo de goles, sugiriendo que la edad por sí sola es un predictor más débil del precio
-
-#### Diagnóstico de Residuos
-- El gráfico de residuos vs valores predichos muestra un patrón de embudo similar al modelo anterior
-- El QQ-plot muestra desviaciones significativas de la normalidad, especialmente en las colas superiores
-- El Scale-location plot indica heterocedasticidad
-- El gráfico de leverage muestra algunos puntos influyentes, aunque menos pronunciados que en el modelo de goles
 
 #### Limitaciones del Modelo
 - El muy bajo R² sugiere que la edad por sí sola no es un buen predictor del precio
@@ -551,27 +609,6 @@ modelo_clasico_multiple_1 = lm(data = train_data,
                              formula = precio ~ Gls + Age + I(Age^2) + Ast + 
                                continente + current_club_domestic_competition_id)
 summary(modelo_clasico_multiple_1)
-```
-
-### Evaluación
-
-#### Datos de entrenamiento
-```{r, message=FALSE, warning=FALSE}
-pred_modelo_clasico_multiple_1 <- augment(modelo_clasico_multiple_1, newdata = train_data)
-cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate)
-```
-```{r, message=FALSE, warning=FALSE}
-cat("MAE: ", mae(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate)
-```
-
-#### Datos de prueba
-
-```{r, message=FALSE, warning=FALSE}
-pred_modelo_clasico_multiple_1 <- augment(modelo_clasico_multiple_1, newdata = test_data)
-cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate)
-```
-```{r, message=FALSE, warning=FALSE}
-cat("MAE: ", mae(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate)
 ```
 
 ### Diagnóstico
@@ -604,6 +641,12 @@ g8 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
 grid.arrange(g5, g6, g7, g8, nrow=2)
 ```
 
+#### Diagnóstico de Residuos
+- El gráfico de residuos vs valores predichos muestra una mejora en el patrón de heterocedasticidad
+- El QQ-plot indica una mejor aproximación a la normalidad en el centro de la distribución
+- El Scale-location plot muestra una variabilidad más estable que los modelos anteriores
+- El gráfico de leverage identifica menos puntos influyentes extremos
+
 #### Interpretación del Modelo
 - El modelo incorpora múltiples variables predictoras: goles, edad (lineal y cuadrática), asistencias, continente de origen y liga
 - Los coeficientes más significativos son:
@@ -615,6 +658,24 @@ grid.arrange(g5, g6, g7, g8, nrow=2)
 - El R² ajustado es 0.4733, indicando que el modelo explica aproximadamente el 47% de la variabilidad
 
 #### Evaluación del Rendimiento
+
+##### Datos de entrenamiento
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_multiple_1 <- augment(modelo_clasico_multiple_1, newdata = train_data)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate)
+```
+
+##### Datos de prueba
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_multiple_1 <- augment(modelo_clasico_multiple_1, newdata = test_data)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_multiple_1, truth = precio, estimate = .fitted)$.estimate)
+```
 - En datos de entrenamiento:
   - RMSE: 13,276,913
   - MAE: 8,093,280
@@ -622,12 +683,6 @@ grid.arrange(g5, g6, g7, g8, nrow=2)
   - RMSE: 15,450,180
   - MAE: 8,469,906
 - La diferencia moderada entre errores de entrenamiento y prueba sugiere un nivel aceptable de generalización
-
-#### Diagnóstico de Residuos
-- El gráfico de residuos vs valores predichos muestra una mejora en el patrón de heterocedasticidad
-- El QQ-plot indica una mejor aproximación a la normalidad en el centro de la distribución
-- El Scale-location plot muestra una variabilidad más estable que los modelos anteriores
-- El gráfico de leverage identifica menos puntos influyentes extremos
 
 #### Mejoras Respecto a Modelos Anteriores
 - El R² ajustado aumentó significativamente (de 0.30 y 0.05 a 0.47)
@@ -702,6 +757,12 @@ g12 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
 grid.arrange(g9, g10, g11, g12, nrow=2)
 ```
 
+#### Diagnóstico de Residuos
+- El gráfico de residuos vs valores predichos muestra una distribución más homogénea
+- El QQ-plot indica una notable mejora en la normalidad de los residuos
+- El Scale-location plot muestra una varianza más estable
+- El gráfico de leverage sugiere menos influencia de valores extremos
+
 #### Interpretación del Modelo
 - El modelo utiliza la transformación logarítmica de la variable precio y mantiene las mismas variables predictoras
 - Los coeficientes más significativos son:
@@ -709,10 +770,30 @@ grid.arrange(g9, g10, g11, g12, nrow=2)
   - Asistencias: +0.173 (p < 2e-16), indica un aumento del 18.9% en el precio por cada asistencia
   - Edad: efecto cuadrático significativo (p < 2e-16)
   - América: +0.404 respecto a África (p = 0.007)
-  - Bundesliga: +0.818 respecto a la liga de referencia (p < 2e-16)
+  - Premier Ligue: +0.818 respecto a la Bundeslige (p < 2e-16)
 - El R² ajustado es 0.4619, similar al modelo anterior pero con mejor interpretabilidad
 
 #### Evaluación del Rendimiento
+
+##### Datos de entrenamiento
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_multiple <- augment(modelo_clasico_multiple, newdata = train_data)
+pred_modelo_clasico_multiple$exp_fitted <- exp(pred_modelo_clasico_multiple$.fitted)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
+```
+
+##### Datos de prueba
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_multiple <- augment(modelo_clasico_multiple, newdata = test_data)
+pred_modelo_clasico_multiple$exp_fitted <- exp(pred_modelo_clasico_multiple$.fitted)
+cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
+```
+```{r, message=FALSE, warning=FALSE}
+cat("MAE: ", mae(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
+```
 - En datos de entrenamiento:
   - RMSE: 28,500,598
   - MAE: 8,057,781
@@ -720,12 +801,6 @@ grid.arrange(g9, g10, g11, g12, nrow=2)
   - RMSE: 17,508,456
   - MAE: 7,357,616
 - La transformación logarítmica mejora el MAE en los datos de prueba, aunque el RMSE es más alto
-
-#### Diagnóstico de Residuos
-- El gráfico de residuos vs valores predichos muestra una distribución más homogénea
-- El QQ-plot indica una notable mejora en la normalidad de los residuos
-- El Scale-location plot muestra una varianza más estable
-- El gráfico de leverage sugiere menos influencia de valores extremos
 
 ### Mejoras Respecto al Modelo Anterior
 - Mejor interpretabilidad de los coeficientes en términos de porcentajes
@@ -736,10 +811,13 @@ grid.arrange(g9, g10, g11, g12, nrow=2)
 La transformación logarítmica del precio mejora las propiedades estadísticas del modelo y facilita la interpretación de los efectos. Este modelo parece más adecuado para predecir el precio de los jugadores, especialmente cuando se considera la interpretabilidad y la estabilidad de las predicciones.
 
 
-
 # Regresión Lineal Múltiple Robusta
 
 ## Modelo "Goles son amores ROBUSTOS"
+
+Precio = Goles
+
+Se utiliza el modelo base de Robustbase, donde la fución de pérdida utilizada es la bicuadrada y utiliza el estimador MM.
 
 ```{r, message=FALSE, warning=FALSE}
 modelo_lmrob_goles <- lmrob(formula = precio ~ Gls, data=train_data)
@@ -750,15 +828,25 @@ pred_modelo_lmrob_goles <- data.frame(
 summary(modelo_lmrob_goles)
 ```
 
+El siguiente gráfico muestra la linea de regresión del modelo lineal clásico (violeta) frente a la regresión del modelo robusto (amarillo).
+
+Se puede apreciar muy claramente como el modelo robusto tiene una pendiente mas baja ajustando en menor medida a los jugadores de mayor cotización.
+
 ```{r, message=FALSE, warning=FALSE}
 ggplot(train_data, aes(x = Gls, y = precio)) +
   geom_point() +
-  geom_smooth(method = "lm", formula = y ~ x, color="forestgreen", se = FALSE) +
-  geom_line(data = pred_modelo_lmrob_goles, aes(x = Gls, y = precio_pred), color = "red") +
+  geom_smooth(method = "lm", formula = y ~ x, color="darkviolet", se = FALSE) +
+  geom_line(data = pred_modelo_lmrob_goles, aes(x = Gls, y = precio_pred), color = "yellow") +
   theme_bw()
 ```
 
-### Evaluación y comparación de contra modelos no robustos
+#### Interpretación del Modelo
+- El modelo establece una relación lineal simple entre el precio del jugador y los goles anotados
+- Por cada gol anotado, el precio del jugador aumenta en €890,535; mucho menor al estimado por el método clásico de €3,267,375
+- El intercepto es €3,040,824, que representa el precio base estimado para un jugador sin goles también presente una notable baja frente al del modelo clásico de €5,238,452
+- El R² ajustado es 0.2183, lo que indica que el modelo explica aproximadamente el 22% de la variabilidad en los precios, observando una dismunición considerable frente al 30% del modelo clásico.
+
+### Evaluación y comparación de modelos frente a datos de prueba
 
 ```{r, message=FALSE, warning=FALSE}
 modelos_simples <- list(simple_1 = modelo_clasico_goles, 
@@ -776,14 +864,15 @@ goles_robusto_test = lista_predicciones_testing$simple_2 %>%
   mutate(.estimate=round(.estimate, 4))
 
 
-metrica_goles <- rbind(goles_clasico_test, goles_robusto_test)
+metrica_goles <- rbind(goles_clasico_test[c(1,3),], goles_robusto_test[c(1,3),])
 
-modelitos_simples <- c(rep("Simple - Goles",3),rep("Robusto - Goles",3))
+modelitos_simples <- c(rep("Clasico - Goles",2),rep("Robusto - Goles",2))
 metricas <- cbind(modelitos_simples, metrica_goles)
 kable(metricas)
 ```
 
-Disminuye el MAE (es mas que nada a modo ilustrativo y pedagógico, para que se vea sobre todo el gráfico anterior como se ajusta el modelo robusto a los datos despreciando los outliers)
+- El RMSE es menor para el modelo clásico, sin embargo, al estar trabajando con datos que tienen outliers lo correcto es compararlo contra los valores de MAE.
+- El MAE es menor para el modelo robusto, mostrando un mejor desempeño frente al modelo clásico.
 
 ## Primero Modelo Multiple Robusto
 
@@ -796,8 +885,17 @@ modelo_multiple_lmrob_2 <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + 
 summary(modelo_multiple_lmrob_2)
 ```
 
-Intepretación de estimadores beta
+#### Interpretación del Modelo
+- El modelo utiliza la transformación logarítmica de la variable precio y mantiene las mismas variables predictoras
+- Los coeficientes más significativos son:
+  - Goles: +0.111 (p < 2e-16), indica un aumento del 12.3% en el precio por cada gol
+  - Asistencias: +0.173 (p < 2e-16), indica un aumento del 18.9% en el precio por cada asistencia
+  - Edad: efecto cuadrático significativo (p < 2e-16)
+  - América: +0.404 respecto a África (p = 0.007)
+  - Bundesliga: +0.818 respecto a la liga de referencia (p < 2e-16)
+- El R² ajustado es 0.4619, similar al modelo anterior pero con mejor interpretabilidad
 
+# ESTO NO SE SI CORRESPONDE PONERLO PORQUE AL SER UNA FORMA NO PARAMÉTRICA CREO QUE NO CORRESPONDE
 ### Diagnóstico
 
 ```{r, message=FALSE, warning=FALSE}
@@ -831,9 +929,40 @@ g16 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
 grid.arrange(g13, g14, g15, g16, nrow = 2)
 ```
 
-## Modelos Robustos con otras funciones psi
+### Evaluación y comparación de modelos frente a datos de prueba
 
-Se aplica la misma fórmula que el modelo anterior pero en lugar de usar la función $\psi$ por defecto bisqueare hacemos 5 modelos nuevos usando en cada uno diferentes $\psi$: lqq, welsh, optimal, hampel y ggw.
+```{r, message=FALSE, warning=FALSE}
+modelos_comparacion <- list(multiple_2 = modelo_clasico_multiple,
+                robusto_2 = modelo_multiple_lmrob_2)
+
+lista_predicciones_testing = map(.x = modelos_comparacion, .f = augment, newdata = test_data) 
+
+
+metricas2_test = lista_predicciones_testing$multiple_2 %>%  
+  mutate(exp_fitted= exp(.fitted)) %>% 
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas3_test = lista_predicciones_testing$robusto_2 %>% 
+  mutate(exp_fitted= exp(.fitted)) %>%
+  metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+
+metrica <- rbind(metricas2_test[c(1,3),], metricas3_test[c(1,3),])
+
+modelitos_comparacion <- c(rep("Multiple - log(Precio)",2),
+               rep("Robusto - log(Precio) - psi = bisquare",2))
+metricas <- cbind(modelitos_comparacion, metrica)
+kable(metricas)
+```
+
+- El RMSE es menor para el modelo clásico, sin embargo, al estar trabajando con datos que tienen outliers lo correcto es compararlo contra los valores de MAE.
+- El MAE es menor para el modelo robusto, mostrando un mejor desempeño frente al modelo clásico.
+
+## Modelos Robustos con otras funciones $\rho$
+
+Se aplica la misma fórmula que el modelo anterior pero en lugar de usar la función $\psi$ por defecto bisqueare hacemos 5 modelos nuevos usando en cada uno diferentes $\rho$: lqq, welsh, optimal, hampel y ggw.
 
 ### Evaluación de todos los modelos
 
@@ -918,24 +1047,32 @@ metricas8_test = lista_predicciones_testing$robusto_7 %>%
 
 
 
-metricas <- rbind(metricas1_test, metricas2_test)
-metricas <- rbind(metricas, metricas3_test)
-metricas <- rbind(metricas, metricas4_test)
-metricas <- rbind(metricas, metricas5_test)
-metricas <- rbind(metricas, metricas6_test)
-metricas <- rbind(metricas, metricas7_test)
-metricas <- rbind(metricas, metricas8_test)
+metricas <- rbind(metricas1_test[c(1,3),], metricas2_test[c(1,3),])
+metricas <- rbind(metricas, metricas3_test[c(1,3),])
+metricas <- rbind(metricas, metricas4_test[c(1,3),])
+metricas <- rbind(metricas, metricas5_test[c(1,3),])
+metricas <- rbind(metricas, metricas6_test[c(1,3),])
+metricas <- rbind(metricas, metricas7_test[c(1,3),])
+metricas <- rbind(metricas, metricas8_test[c(1,3),])
 
-modelitos <- c(rep("Multiple - Precio",3),rep("Multiple - log(Precio)",3),
-               rep("Robusto - log(Precio) - psi = bisqare",3),
-               rep("Robusto - log(Precio) - psi = lqq",3),
-               rep("Robusto - log(Precio) - psi = welsh",3), 
-               rep("Robusto - log(Precio) - psi = optimal",3),
-               rep("Robusto - log(Precio) - psi = hampel",3),
-               rep("Robusto - log(Precio) - psi = ggw",3))
+modelitos <- c(rep("Multiple - Precio",2),
+               rep("Multiple - log(Precio)",2),
+               rep("Robusto - log(Precio) - psi = bisqare",2),
+               rep("Robusto - log(Precio) - psi = lqq",2),
+               rep("Robusto - log(Precio) - psi = welsh",2), 
+               rep("Robusto - log(Precio) - psi = optimal",2),
+               rep("Robusto - log(Precio) - psi = hampel",2),
+               rep("Robusto - log(Precio) - psi = ggw",2))
 metricas <- cbind(modelitos, metricas)
 kable(metricas)
 ```
 
-En todos los robustos mejora el MAE, en el optimal es donde mas mejora.
+- El MAE de todos los modelos robustos es menor que el de los modelos clásicos
+- El modelo que utiliza la función $\rho$ optimal tiene le menor MAE, siendo el de mejor desempeño. Esto es posible ya ya que la funcion optimal es apropiada para datos donde los outliers no son muy pronunciados, que parece ser el caso del precio de los jugadores.
+
+
+# Conclusiones
+
+
+# Bibliografía
 
