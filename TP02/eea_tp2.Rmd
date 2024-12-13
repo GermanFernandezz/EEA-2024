@@ -697,6 +697,18 @@ Este modelo representa una mejora sustancial sobre los modelos simples anteriore
 
 $log(Precio)$ = $Goles$ + $Edad$ + $Edad^2$ + $Asistencias$ + $Continente$ $de$ $nacimiento$ $del$ $jugador$ + $Liga$ $donde$ $juega$
 
+Al utilizar una transformación logarítmica, la interpretación del modelo es diferente. La variación de la variable a predecir es en términos porcentuales según aumenta en una unidad la variable predictora numérica o según la variable de referencia categórica.
+
+Por lo tanto:
+
+$$ c = (\exp(b) - 1) \times 100 $$
+
+Donde
+
+$$ y = a + b \cdot x $$
+
+En este caso, si $x$ es una variable numérica entonces $y$ varía $c$% por cada aumento de $x$ en una unidad. Si en cambio $x$ es una variable categórica, $y$ varía $c$% con respecto a la variable categórica de referencia.
+
 ```{r, message=FALSE, warning=FALSE}
 modelo_clasico_multiple = lm(data = train_data, 
                                 formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
@@ -1074,5 +1086,12 @@ kable(metricas)
 # Conclusiones
 
 
+
 # Bibliografía
+- Davidcariboo. (n.d.). Football Data from Transfermarkt [Data set]. Kaggle. https://www.kaggle.com/datasets/davidcariboo/player-scores 
+- Orkunaktas. (n.d.). Premier League All Players Stats 23/24 [Data set]. Kaggle. https://www.kaggle.com/datasets/orkunaktas/premier-league-all-players-stats-2324 
+- Apunte de Regresión Lineal. María Eugenia Szretter Noste, Facultad de Ciencias Exactas y Naturales, Universidad de Buenos Aires, Agosto - Octubre de 2017. http://mate.dm.uba.ar/~meszre/apunte_regresion_lineal_szretter.pdf
+- Chun Yu & Weixin Yao (2016). Robust linear regression: A review and comparison. Communications in Statistics - Simulation and
+Computation, https://www.tandfonline.com/doi/abs/10.1080/03610918.2016.1202271
+- Clay Ford (2018). Interpreting Log Transformations in a Linear Model. University of Virginia Library. https://library.virginia.edu/data/articles/interpreting-log-transformations-in-a-linear-model
 
