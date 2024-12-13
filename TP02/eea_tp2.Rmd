@@ -189,7 +189,7 @@ $$
 x & \text{si } |x| \leq a \\
 a \cdot \text{sign}(x) \cdot \left(1 - \left(\frac{|x| - a}{b - a}\right)^2\right)^2 & \text{si } b < |x| \leq c \\
 0 & \text{si } |x| > c 
-\end{cases}
+\end{cases} \quad \text{(12)}
 $$
 
 
@@ -231,7 +231,6 @@ colnames(df)[colnames(df) == "market_value_in_eur"] <- "precio"
 # Agregar nueva variable que tenga en cuenta los precios de los jugadores y poder hacer un split 
 # test-train estratificado
 caja_precios <- boxplot(df$precio)
-caja_precios$stats
 
 df$precio_cat <- NA
 
@@ -257,9 +256,16 @@ train_indices <- createDataPartition(df$precio_cat, p = 0.7, list = FALSE)  # 70
 # Dividir los datos
 train_data <- df[train_indices, ]
 test_data <- df[-train_indices, ]
+```
 
-# Verificar la distribución de clases
+### Verificar la distribución de clases
+
+#### Datos de Entrenamiento
+```{r, message=FALSE, warning=FALSE}
 table(train_data$precio_cat)
+```
+#### Datos de prueba
+```{r, message=FALSE, warning=FALSE}
 table(test_data$precio_cat)
 ```
 
@@ -456,7 +462,7 @@ grid.arrange(g1, g2, g3, g4, nrow=2)
 
 #### Interpretación del Modelo
 - El modelo establece una relación lineal simple entre el precio del jugador y los goles anotados
-- Por cada gol anotado, el precio del jugador aumenta en €3,267,375
+- Por cada gol anotado, se precibe un aumento estadísticamente significativo (p-value < 0.05) en el precio del jugador de €3,267,375
 - El intercepto es €5,238,452, que representa el precio base estimado para un jugador sin goles
 - El modelo es estadísticamente significativo (p-value < 2.2e-16)
 - El R² ajustado es 0.2985, lo que indica que el modelo explica aproximadamente el 30% de la variabilidad en los precios
@@ -650,11 +656,15 @@ grid.arrange(g5, g6, g7, g8, nrow=2)
 #### Interpretación del Modelo
 - El modelo incorpora múltiples variables predictoras: goles, edad (lineal y cuadrática), asistencias, continente de origen y liga
 - Los coeficientes más significativos son:
-  - Goles: +2,189,855 por gol (p < 2e-16)
-  - Asistencias: +2,152,607 por asistencia (p < 2e-16)
+  - Goles: +2,189,855 por gol (p-value < 2e-16)
+  - Asistencias: +2,152,607 por asistencia (p-value < 2e-16)
   - Edad: efecto cuadrático con máximo alrededor de los 23 años
-  - América: +4,494,113 respecto a África (p = 0.015)
-  - Bundesliga: +11,060,116 respecto a la liga de referencia (p < 2e-16)
+  - América: +4,494,113 respecto a África (p-value = 0.015)
+  - Premier League: +11,060,116 respecto a la liga de referencia, La Liga (España) (p-value < 2e-16)
+  - Ligue 1: -4,436,917 respecto a la liga de referencia, La Liga (p-value < 0.05)
+  - Bundesliga: -4,011,806 respecto a la liga de referencia, La Liga (p-value < 0.05)
+  - Serie A (Italia): -2,429,060 respecto a la liga de referencia, La Liga (p-value < 0.05)
+  
 - El R² ajustado es 0.4733, indicando que el modelo explica aproximadamente el 47% de la variabilidad
 
 #### Evaluación del Rendimiento
@@ -701,11 +711,15 @@ Al utilizar una transformación logarítmica, la interpretación del modelo es d
 
 Por lo tanto:
 
-$$ c = (\exp(b) - 1) \times 100 $$
+$$ 
+c = (\exp(b) - 1) \times 100 \quad \text{(13)}
+$$ 
 
 Donde
 
-$$ y = a + b \cdot x $$
+$$ 
+y = a + b \times x \quad \text{(14)}
+$$ 
 
 En este caso, si $x$ es una variable numérica entonces $y$ varía $c$% por cada aumento de $x$ en una unidad. Si en cambio $x$ es una variable categórica, $y$ varía $c$% con respecto a la variable categórica de referencia.
 
@@ -778,11 +792,13 @@ grid.arrange(g9, g10, g11, g12, nrow=2)
 #### Interpretación del Modelo
 - El modelo utiliza la transformación logarítmica de la variable precio y mantiene las mismas variables predictoras
 - Los coeficientes más significativos son:
-  - Goles: +0.116 (p < 2e-16), indica un aumento del 12.3% en el precio por cada gol
-  - Asistencias: +0.173 (p < 2e-16), indica un aumento del 18.9% en el precio por cada asistencia
-  - Edad: efecto cuadrático significativo (p < 2e-16)
-  - América: +0.404 respecto a África (p = 0.007)
-  - Premier Ligue: +0.818 respecto a la Bundeslige (p < 2e-16)
+  - Goles: +0.116 (p-value < 2e-16), indica un aumento del 12.3% en el precio por cada gol
+  - - Asistencias: +0.173 (p-value < 2e-16), indica un aumento estadísticamente significativo del 18.9% en el precio por cada asistencia
+  - Edad: efecto cuadrático significativo (p-value < 2e-16)
+  - América: +0.404 respecto a África (p-value = 0.007), indica un aumento estadísticamete significativo de 49.8% en el precio de los jugadores americanos con respecto a los africanos.
+  - Premier League: +0.818 respecto a la liga de referencia, (p-value < 2e-16) indica un aumento estadísticamente significativo de 126.5% en el precio de los jugadores de la Premier League con respecto a los jugadores de La Liga (España)
+  - Ligue 1 (Francia): -0.296 respecto a la liga de referencia, (p-value = 0.003) indica una disminución estadísticamente significativa de 25.6% en el precio de los jugadores de la Ligue 1 con respecto a los jugadores de La Liga.
+  - Bundesliga: -0.285 respecto de la liga de referencia (p-value = 0.005) indica una disminución estadísticamente significativa de 24.8% en el preicio de los jugadores de la Bundesliga con respecto a La Liga.
 - El R² ajustado es 0.4619, similar al modelo anterior pero con mejor interpretabilidad
 
 #### Evaluación del Rendimiento
@@ -856,7 +872,7 @@ ggplot(train_data, aes(x = Gls, y = precio)) +
 - El modelo establece una relación lineal simple entre el precio del jugador y los goles anotados
 - Por cada gol anotado, el precio del jugador aumenta en €890,535; mucho menor al estimado por el método clásico de €3,267,375
 - El intercepto es €3,040,824, que representa el precio base estimado para un jugador sin goles también presente una notable baja frente al del modelo clásico de €5,238,452
-- El R² ajustado es 0.2183, lo que indica que el modelo explica aproximadamente el 22% de la variabilidad en los precios, observando una dismunición considerable frente al 30% del modelo clásico.
+- El R² ajustado es 0.2177, lo que indica que el modelo explica aproximadamente el 21.8% de la variabilidad en los precios, observando una dismunición considerable frente al 30% del modelo clásico.
 
 ### Evaluación y comparación de modelos frente a datos de prueba
 
@@ -900,12 +916,14 @@ summary(modelo_multiple_lmrob_2)
 #### Interpretación del Modelo
 - El modelo utiliza la transformación logarítmica de la variable precio y mantiene las mismas variables predictoras
 - Los coeficientes más significativos son:
-  - Goles: +0.111 (p < 2e-16), indica un aumento del 12.3% en el precio por cada gol
-  - Asistencias: +0.173 (p < 2e-16), indica un aumento del 18.9% en el precio por cada asistencia
-  - Edad: efecto cuadrático significativo (p < 2e-16)
-  - América: +0.404 respecto a África (p = 0.007)
-  - Bundesliga: +0.818 respecto a la liga de referencia (p < 2e-16)
-- El R² ajustado es 0.4619, similar al modelo anterior pero con mejor interpretabilidad
+  - Goles: +0.111 (p-value < 2e-16), indica un aumento estadísticamente significativo del 11.7% en el precio por cada gol
+  - Asistencias: +0.170 (p-value < 2e-16), indica un aumento estadísticamente significativo del 18.5% en el precio por cada asistencia
+  - Edad: efecto cuadrático significativo (p-value < 2e-16)
+  - América: +0.440 respecto a África (p-value = 0.0008), indica un aumento estadísticamete significativo de 55.2% en el precio de los jugadores americanos con respecto a los africanos. Es mayor con respecto al modelo clásico, con lo cual al quitarle peso a los jugadores mas caros podemos decir que los jugadores americanos son aún mas apreciados que los africanos.
+  - Premier League: +0.917 respecto a la liga de referencia, (p-value < 3.66e-16) indica un aumento estadísticamente significativo de 150.2% en el precio de los jugadores de la Premier League con respecto a los jugadores de La Liga (España)
+  - Ligue 1 (Francia): -0.231 respecto a la liga de referencia, (p-value = 0.03) indica una disminución estadísticamente significativa de 20.6% en el precio de los jugadores de la Ligue 1 con respecto a los jugadores de La Liga.
+  - Bundesliga: -0.282 respecto de la liga de referencia (p-value = 0.004) indica una disminución estadísticamente significativa de 24.6% en el preicio de los jugadores de la Bundesliga con respecto a La Liga.
+- El R² ajustado es 0.4793, similar al modelo anterior pero con mejor interpretabilidad, aumentando un 1.74% con respecto al módelo clásico.
 
 # ESTO NO SE SI CORRESPONDE PONERLO PORQUE AL SER UNA FORMA NO PARAMÉTRICA CREO QUE NO CORRESPONDE
 ### Diagnóstico
