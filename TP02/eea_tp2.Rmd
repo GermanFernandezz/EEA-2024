@@ -71,8 +71,25 @@ En los modelos lineales robustos queremos cambiar la función de perdida tal que
 $$
 g(a, b) = \sum_{i=1}^n \rho \left( \frac{Y_i - \left( a + b X_i \right)}{s_n} \right)   \quad \text{(2)} 
 $$
+Definición de $\rho$ 
 
-donde $\rho$ : R →R es una función acotada, creciente y simétrica alrededor del cero, y $s_n$ es un estimador de escala que juega el papel de σ en el modelo clásico de regresión.
+-$\rho$ : R →R.
+
+Una función-$\rho$ denotará a una función $\rho$(u) tal que:
+
+-$\rho$(0) = 0.
+
+-$\rho$(−u) = $\rho$(u).
+
+-0 ≤ u ≤ v implica $\rho$(u) ≤ $\rho$(v).
+
+-$\rho$ es continua.
+
+-sup~u $\rho$(u) = 1.
+
+Si $\rho$(u) < 1 y 0 ≤ u < v entonces $\rho$(u) < $\rho$(v).
+
+es una función acotada, creciente y simétrica alrededor del cero, y $s_n$ es un estimador de escala que juega el papel de σ en el modelo clásico de regresión.
 
 Una posibilidad es ajustar una recta usando un procedimiento de ajuste robusto, por ejemplo un MM-estimador de regresión, propuesto por Yohai [1987]. En R, esto está programado dentro de la rutina lmrob en el paquete robustbase de R. La estimación se hace en tres etapas, se propone un estimador inicial de los parámetros, a partir de él se estima a sn y manualmente se obtienen los estimadores de los parámetros a partir de ellos, minimizando la función objetivo
 
