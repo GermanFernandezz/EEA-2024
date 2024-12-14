@@ -296,10 +296,10 @@ grafico2 <- ggplot(df, aes(x=Comp, fill = Comp)) +
   theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1),
         legend.position = "none")
 
-posiciones <- table(df$sub_position)
+posiciones <- table(df$position)
 posiciones <- names(sort(posiciones))
-df$sub_position <- factor(df$sub_position, levels = posiciones)
-grafico3 <- ggplot(df, aes(x=sub_position, fill = sub_position)) + 
+df$position <- factor(df$position, levels = posiciones)
+grafico3 <- ggplot(df, aes(x=position, fill = position)) + 
   geom_bar() +
   scale_fill_viridis(discrete = TRUE, option = "D") + # Paleta accesible
   labs(y = "Count", x = "Liga", title = "Cantidad de jugadores por posicion") +
@@ -656,8 +656,8 @@ grid.arrange(g5, g6, g7, g8, nrow=2)
 #### Interpretación del Modelo
 - El modelo incorpora múltiples variables predictoras: goles, edad (lineal y cuadrática), asistencias, continente de origen y liga
 - Los coeficientes más significativos son:
-  - Goles: +2,189,855 por gol (p-value < 2e-16)
-  - Asistencias: +2,152,607 por asistencia (p-value < 2e-16)
+  - Goles: +2,189,855 por gol (p-value < 2e-16). Esto indica que el precio de los jugadores que tienen misma cantidad de asistencias y edad aumenta €2,189,855 por cada gol anotado
+  - Asistencias: +2,152,607 por asistencia (p-value < 2e-16). Esto indica que el precio de los jugadores que tienen misma cantidad de goles y edad aumenta €2,152,607 por cada asistencia adicional.
   - Edad: efecto cuadrático con máximo alrededor de los 23 años
   - América: +4,494,113 respecto a África (p-value = 0.015)
   - Premier League: +11,060,116 respecto a la liga de referencia, La Liga (España) (p-value < 2e-16)
@@ -730,28 +730,6 @@ modelo_clasico_multiple = lm(data = train_data,
 summary(modelo_clasico_multiple)
 ```
 
-### Evaluación
-
-#### Datos de entrenamiento
-```{r, message=FALSE, warning=FALSE}
-pred_modelo_clasico_multiple <- augment(modelo_clasico_multiple, newdata = train_data)
-pred_modelo_clasico_multiple$exp_fitted <- exp(pred_modelo_clasico_multiple$.fitted)
-cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
-```
-```{r, message=FALSE, warning=FALSE}
-cat("MAE: ", mae(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
-```
-
-#### Datos de prueba
-
-```{r, message=FALSE, warning=FALSE}
-pred_modelo_clasico_multiple <- augment(modelo_clasico_multiple, newdata = test_data)
-pred_modelo_clasico_multiple$exp_fitted <- exp(pred_modelo_clasico_multiple$.fitted)
-cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
-```
-```{r, message=FALSE, warning=FALSE}
-cat("MAE: ", mae(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
-```
 
 ### Diagnóstico
 
@@ -792,8 +770,8 @@ grid.arrange(g9, g10, g11, g12, nrow=2)
 #### Interpretación del Modelo
 - El modelo utiliza la transformación logarítmica de la variable precio y mantiene las mismas variables predictoras
 - Los coeficientes más significativos son:
-  - Goles: +0.116 (p-value < 2e-16), indica un aumento del 12.3% en el precio por cada gol
-  - - Asistencias: +0.173 (p-value < 2e-16), indica un aumento estadísticamente significativo del 18.9% en el precio por cada asistencia
+  - Goles: +0.116 (p-value < 2e-16).Esto indica que el precio de los jugadores que tienen misma cantidad de asistencias y edad aumenta un 12.3% por cada gol anotado.
+  - Asistencias: +0.173 (p-value < 2e-16). Esto indica que el precio de los jugadores que tienen misma cantidad de goles y edad aumenta un 18.9% por cada asistencia adicional.
   - Edad: efecto cuadrático significativo (p-value < 2e-16)
   - América: +0.404 respecto a África (p-value = 0.007), indica un aumento estadísticamete significativo de 49.8% en el precio de los jugadores americanos con respecto a los africanos.
   - Premier League: +0.818 respecto a la liga de referencia, (p-value < 2e-16) indica un aumento estadísticamente significativo de 126.5% en el precio de los jugadores de la Premier League con respecto a los jugadores de La Liga (España)
@@ -916,8 +894,8 @@ summary(modelo_multiple_lmrob_2)
 #### Interpretación del Modelo
 - El modelo utiliza la transformación logarítmica de la variable precio y mantiene las mismas variables predictoras
 - Los coeficientes más significativos son:
-  - Goles: +0.111 (p-value < 2e-16), indica un aumento estadísticamente significativo del 11.7% en el precio por cada gol
-  - Asistencias: +0.170 (p-value < 2e-16), indica un aumento estadísticamente significativo del 18.5% en el precio por cada asistencia
+  - Goles: +0.111 (p-value < 2e-16). Esto indica que el precio de los jugadores que tienen misma cantidad de asistencias y edad aumenta un 11.7% por cada gol anotado. 
+  - Asistencias: +0.170 (p-value < 2e-16). Esto indica que el precio de los jugadores que tienen misma cantidad de goles y edad aumenta un 18.5% por cada asistencia adicional.
   - Edad: efecto cuadrático significativo (p-value < 2e-16)
   - América: +0.440 respecto a África (p-value = 0.0008), indica un aumento estadísticamete significativo de 55.2% en el precio de los jugadores americanos con respecto a los africanos. Es mayor con respecto al modelo clásico, con lo cual al quitarle peso a los jugadores mas caros podemos decir que los jugadores americanos son aún mas apreciados que los africanos.
   - Premier League: +0.917 respecto a la liga de referencia, (p-value < 3.66e-16) indica un aumento estadísticamente significativo de 150.2% en el precio de los jugadores de la Premier League con respecto a los jugadores de La Liga (España)
