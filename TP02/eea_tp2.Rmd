@@ -1096,9 +1096,44 @@ kable(metricas)
 - El modelo que utiliza la función $\rho$ optimal tiene le menor MAE, siendo el de mejor desempeño. Esto es posible ya ya que la funcion optimal es apropiada para datos donde los outliers no son muy pronunciados, que parece ser el caso del precio de los jugadores.
 
 
+
 # Conclusiones
 
+El análisis estadístico revela patrones fundamentales en la valoración de jugadores que desafían varias percepciones tradicionales del mercado. 
+La evidencia empírica demuestra una clara segmentación del mercado europeo, con ineficiencias significativas que crean oportunidades estratégicas.
 
+La elección metodológica de utilizar regresión robusta con transformación logarítmica demostró ser crucial para la validez del análisis. 
+El método MM-estimation implementado en Robustbase, que utiliza por defecto la función bisquare, permitió manejar eficazmente la heterogeneidad inherente al mercado de fichajes, 
+donde las valoraciones extremas son comunes pero no necesariamente outliers estadísticos. 
+La transformación logarítmica no solo mejoró las propiedades estadísticas del modelo, sino que también proporcionó una interpretación más intuitiva en términos de variaciones porcentuales, 
+alineándose naturalmente con la forma en que el mercado evalúa los cambios en el valor de los jugadores. 
+El uso de estimadores robustos reveló que el mercado de fichajes, aunque volátil, mantiene una estructura subyacente que puede ser modelada de manera más precisa cuando se utilizan métodos que equilibran robustez y eficiencia estadística.
+
+El modelo robusto, con un R² ajustado de 47.93%, captura las dinámicas fundamentales del mercado mientras filtra el "ruido" especulativo. 
+La efectividad de la función bisquare sugiere que, contrario a la percepción popular, las valoraciones extremas en el mercado siguen patrones identificables y no son puramente especulativas.
+
+La Premier League mantiene una prima de valoración del 150.2% sobre La Liga, un diferencial que excede significativamente las diferencias en ingresos operativos entre estas ligas. 
+Esta sobrevaloración sistemática sugiere una burbuja estructural en el mercado inglés, particularmente notable en comparación con Bundesliga (-24.6%) y Ligue 1 (-20.6%), 
+donde el talento parece estar sistemáticamente infravalorado.
+
+Una observación particularmente relevante es la mayor valoración de las asistencias (+18.5%) sobre los goles (+11.7%). 
+Esta diferencia refleja una evolución en la comprensión del valor creativo en el fútbol moderno, donde la capacidad de generar oportunidades se premia por encima de la finalización. 
+Este patrón sugiere una sofisticación creciente en la evaluación del talento.
+
+La relación cuadrática con la edad emerge como un factor crítico en la valoración, señalando una ventana óptima de valoración que el mercado reconoce consistentemente. 
+Este patrón tiene implicaciones profundas para la gestión de activos deportivos y la planificación de plantillas a largo plazo.
+
+La brecha de valoración del 55.2% entre jugadores americanos y africanos, controlando por rendimiento y liga, revela un sesgo de mercado significativo. 
+Esta disparidad, estadísticamente significativa (p-value = 0.0008), indica una ineficiencia de mercado estructural que trasciende el rendimiento deportivo puro.
+
+Las ineficiencias identificadas en el mercado sugieren que el valor real de un jugador puede diferir significativamente de las valoraciones de mercado actuales, especialmente en ligas secundarias y mercados emergentes. 
+La transformación logarítmica del modelo revela que estas discrepancias siguen patrones predecibles y explotables.
+
+El análisis también señala una evolución en la estructura del mercado, donde los factores tradicionales de valoración están siendo complementados por métricas más sofisticadas. 
+La significativa prima por creatividad sugiere un mercado que está comenzando a valorar más acertadamente las contribuciones tácticas complejas.
+
+Estos hallazgos indican que el mercado de transferencias, aunque cada vez más sofisticado, mantiene ineficiencias estructurales significativas. 
+La combinación de sesgos geográficos, primas de liga y valoración de habilidades específicas crea un panorama complejo pero analíticamente navegable para la identificación de valor.
 
 # Bibliografía
 - Davidcariboo. (n.d.). Football Data from Transfermarkt [Data set]. Kaggle. https://www.kaggle.com/datasets/davidcariboo/player-scores 
