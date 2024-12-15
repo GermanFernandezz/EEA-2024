@@ -77,6 +77,7 @@ En los modelos lineales robustos queremos cambiar la función de perdida tal que
 $$
 g(a, b) = \sum_{i=1}^n \rho \left( \frac{Y_i - \left( a + b X_i \right)}{s_n} \right)   \quad \text{(2)} 
 $$
+
 Definición de $\rho$ 
 
 -$\rho$ : R →R.
@@ -953,8 +954,8 @@ $Precio$ = $Goles$ + $Edad$ + $Edad^2$ + $Asistencias$ + $Continente$ $de$ $naci
 
 ```{r, message=FALSE, warning=FALSE}
 modelo_multiple_lmrob <- lmrob(formula = precio ~ Gls + Age + I(Age^2) + Ast + 
-                                 continente + current_club_domestic_competition_id, 
-                               data=train_data)
+                                continente + current_club_domestic_competition_id, 
+                                data=train_data)
 summary(modelo_multiple_lmrob)
 ```
 
