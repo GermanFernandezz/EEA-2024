@@ -39,7 +39,13 @@ library(kableExtra)
 
 # Objetivo
 
-El fútbol es el deporte más popular, el que tiene un mercado más grande y en el cual el valor de las transferencias de los jugadores es el más alto. En ese sentido, nos proponemos analizar las transferencias y cotizaciones de los jugadores de la liga inglesa, una de las mejores ligas del mundo.
+El fútbol es el deporte más popular, el que tiene un mercado más grande y en el cual el valor de las transferencias de los jugadores es el más alto. En ese sentido, nos proponemos analizar las transferencias y cotizaciones de los jugadores de las cinco ligas mas importantes de Europa:
+
+- La Liga - España
+- Premier League - Inglaterra
+- Bundesliga - Alemania
+- Serie A - Italia
+- Ligue 1 - Francia
 
 Por este motivo, y haciendo uso de los conocimientos aportados por la materia, optamos por profundizar en el desarrollo de métodos de regresión robustos para hacer análisis predictivos, haciendo foco en la explicabilidad del modelo para predecir las transferencias de los jugadores.
 
@@ -91,9 +97,7 @@ Si $\rho$(u) < 1 y 0 ≤ u < v entonces $\rho$(u) < $\rho$(v).
 
 es una función acotada, creciente y simétrica alrededor del cero, y $s_n$ es un estimador de escala que juega el papel de σ en el modelo clásico de regresión.
 
-Una posibilidad es ajustar una recta usando un procedimiento de ajuste robusto, por ejemplo un MM-estimador de regresión, propuesto por Yohai [1987]. 
-En R, esto está programado dentro de la rutina lmrob en el paquete robustbase de R. La estimación se hace en tres etapas, se propone un estimador inicial de los parámetros, 
-a partir de él se estima a $s_n$ y manualmente se obtienen los estimadores de los parámetros a partir de ellos, minimizando la función objetivo
+Una posibilidad es ajustar una recta usando un procedimiento de ajuste robusto, por ejemplo un MM-estimador de regresión, propuesto por Yohai [1987]. En R, esto está programado dentro de la rutina lmrob en el paquete robustbase de R. La estimación se hace en tres etapas, se propone un estimador inicial de los parámetros, a partir de él se estima a sn y manualmente se obtienen los estimadores de los parámetros a partir de ellos, minimizando la función objetivo
 
 Existen varias funciones $\rho$ que serán evaluadas en el presente trabajo. Por defecto, robustbase utiliza la bicuadrada (bisquare), pero también se pueden implementar lqq, welsh, optimal, etc.
 
@@ -125,9 +129,9 @@ $$
 
 5. Se vuelven a estimar los parámetros a y b con una regresión ponderada.
 
-Se repiten los pases hasta no observar mas mejoras o hasta un máximo de iteraciones.
+Se repiten los pasos hasta no observar mas mejoras o hasta un máximo de iteraciones.
 
-A continuación de muestras Las funciones $\rho$ más comunes y como se comportan los pesos de las mismas.
+A continuación se muestran las funciones $\rho$ más comunes y como se comportan los pesos de las mismas.
 
 1. Bisquare (Tukey):
 $$
@@ -211,6 +215,10 @@ a \cdot \text{sign}(x) \cdot \left(1 - \left(\frac{|x| - a}{b - a}\right)^2\righ
 \end{cases} \quad \text{(12)}
 $$
 
+```{r, message=FALSE, warning=FALSE}
+getOption("SweaveHooks")[["fig"]]()
+p.psiFun(x., "optimal", par = 1.06, leg.loc="bottomright")
+```
 
 Donde $k$, $a$, $b$, $c$, $c_1$, $c_2$ y $c_3$ son constantes que determinan los puntos de quiebre y la forma de cada función.
 
@@ -223,7 +231,7 @@ El set de datos consiste en dos bases, ambas obtenidas de Kaggle.
 
 La base de datos con los precios de los jugadores se obtuvo de la web Transfermarkt. Cuenta con 32405 registros, y dos de sus variables son los precios actuales de los jugadores y el precio mas alta alcanzado. Además cuenta con la información del club y liga actual de cada jugador.
 
-Las otra base de datos cuenta con las métricas durante la temporada 2023/2023 de los jugadores de las 5 ligas mas importantes del fútbol europeo. Algunas de sus variables son Edad, goles anotados, asistencias, posición dentro del campo de juego, nacionalidad, entre otras.
+Las otra base de datos cuenta con las métricas durante la temporada 2023/2024 de los jugadores de las 5 ligas mas importantes del fútbol europeo. Algunas de sus variables son Edad, goles anotados, asistencias, posición dentro del campo de juego, nacionalidad, entre otras.
 
 Ambas bases de datos se unieron por el nombre y apellido del jugador, y el club actual. Adicionalmente, se agregó la variable Continente al dataset final, la cual informa el continente natal de cada jugador.
 
@@ -242,6 +250,8 @@ Luego utilizaremos esta nueva variable para realizar la división del dataset de
 El objetivo es que quedan estratificados los jugadores mas caros u outliers, por eso no se realiza una división por debajo de Q2.
 ```{r, message=FALSE, warning=FALSE}
 # Carga de datset
+# setwd("/Users/jorgefernandez/Documents/Cienciadedatos/EEA2024/TP02")
+setwd("/Users/rmarques/UBA/EEA/german-eea-2024/TP02")
 df <- as.data.frame(read.csv("dataset.csv"))
 df <- as.data.frame(df)
 df <- na.omit(df)
@@ -321,7 +331,7 @@ df$position <- factor(df$position, levels = posiciones)
 grafico3 <- ggplot(df, aes(x=position, fill = position)) + 
   geom_bar() +
   scale_fill_viridis(discrete = TRUE, option = "D") + # Paleta accesible
-  labs(y = "Count", x = "Liga", title = "Cantidad de jugadores por posicion") +
+  labs(y = "Count", x = "Posiciones", title = "Cantidad de jugadores por posicion") +
   theme_minimal() + 
   theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1,),
         legend.position = "none")
@@ -329,7 +339,7 @@ grafico3 <- ggplot(df, aes(x=position, fill = position)) +
 grafico4 <- ggplot(df, aes(x=foot, fill = foot)) + 
   geom_bar() +
   scale_fill_viridis(discrete = TRUE, option = "D") + # Paleta accesible
-  labs(y = "Count", x = "Liga", title = "Cantidad de jugadores por pie habil") +
+  labs(y = "Count", x = "Pie hábil", title = "Cantidad de jugadores por pie habil") +
   theme_minimal() + 
   theme(axis.text.x = element_text(angle=45, vjust=1, hjust=1,),
         legend.position = "none")
@@ -347,7 +357,7 @@ Todas las ligas están igual de representadas en el dataset, con lo cual el aná
 
 ### Jugadores por posición
 
-Predominan los jugadores que se desempeñan en el centro del campo, como defensores centrales o mediocampistas centrales o mixtos. Esto tiene cierta lógica ya que 3 o 4 jugadores de campo siempre se desempeñan en estas posiciones. Llama la atención la alta proporción de centrodelanteros, ya que los equipos suelen usar un solo jugador en esa posición.
+La mayor cantidad de jugadores son Defensores, y en menor medida los Mediocampistas y Delanteros, pero todas estas posiciones están uniformemente distribuidas. Como es de esperarse, los Arquero es la posición de menor representación.
 
 ### Jugadores por pie hábil.
 
@@ -370,13 +380,13 @@ df %>%
 ```
 
 ### Correlación entre Goles y Precio
-Se observa una correlación positiva alta a moderada (Corr: 0.502). Esto sugiere que los jugadores que marcan más goles tienden a tener un valor de mercado más alto. La relación parece ser consistente a través de las diferentes ligas.
+Se observa una correlación positiva alta a moderada (Corr: 0.502). Esto sugiere que los jugadores que marcan más goles tienden a tener un valor de mercado más alto. La relación parece ser consistente a través de las diferentes ligas. Siendo menos pronunciada en las ligas española y francesa donde parecería que la cantida de goles anotados tiene menos importancia que en el resto de las ligas, y mas pronunciada en la liga inglesa donde parecería que la cantida de goles anotados tiene mas importancia que el resto de las ligas.
 
 ### Correlación entre Asistencias y Precio  
-Existe una correlación positiva moderada (Corr: 0.465). Indica que los jugadores que dan más asistencias también tienden a tener un mayor valor en el mercado. La correlación es algo menor que con los goles, sugiriendo que el mercado valora más la capacidad goleadora.
+Existe una correlación positiva moderada (Corr: 0.465). Indica que los jugadores que dan más asistencias también tienden a tener un mayor valor en el mercado. La correlación es algo menor que con los goles, sugiriendo que el mercado valora más la capacidad goleadora. Se observa la misma tendencia que para la cantidad de goles, es menos pronunciada en las ligas española y francesa donde parecería que la cantida de asistencias tiene menos importancia que en el resto de las ligas, y mas pronunciada en la liga inglesa donde parecería que la cantida de asistencias tiene mas importancia que el resto de las ligas.
 
 ### Correlación entre Edad y Precio
-Se observa una correlación negativa baja pero clara (Corr: -0.176). Sugiere que el valor de mercado tiende a disminuir con la edad del jugador. Esto tiene sentido desde una perspectiva de inversión, ya que los jugadores más jóvenes tienen mayor potencial de desarrollo y años de carrera por delante.
+Se observa una correlación negativa baja pero clara (Corr: -0.176). Sugiere que el valor de mercado tiende a disminuir con la edad del jugador. Esto tiene sentido desde una perspectiva de inversión, ya que los jugadores más jóvenes tienen mayor potencial de desarrollo y años de carrera por delante. En este caso, la liga español tiene una pendiente mas negativa lo que podría evidenciar que los jugadores jovenes son mas valorados que el resto de las ligas, en cambio en la liga francesa se observa una pendiente mas suave con lo cual podría indicar que se valora mas la experiencia que el resto de las ligas.
 
 ### Distribución por Ligas
 Los diagramas de caja (boxplots) muestran diferencias en la distribución de precios entre ligas. Las ligas española y británica presentan valores más altos en general. Esto se alinea con el poder económico de estas ligas y específicamente de clubes como Real Madrid y Manchester City. La distribución de precios es notablemente asimétrica, con algunos valores muy altos que podrían considerarse outliers.
@@ -683,7 +693,6 @@ grid.arrange(g5, g6, g7, g8, nrow=2)
   - Ligue 1: -4,436,917 respecto a la liga de referencia, La Liga (p-value < 0.05)
   - Bundesliga: -4,011,806 respecto a la liga de referencia, La Liga (p-value < 0.05)
   - Serie A (Italia): -2,429,060 respecto a la liga de referencia, La Liga (p-value < 0.05)
-  
 - El R² ajustado es 0.4733, indicando que el modelo explica aproximadamente el 47% de la variabilidad
 
 #### Evaluación del Rendimiento
@@ -726,7 +735,7 @@ Este modelo representa una mejora sustancial sobre los modelos simples anteriore
 
 $log(Precio)$ = $Goles$ + $Edad$ + $Edad^2$ + $Asistencias$ + $Continente$ $de$ $nacimiento$ $del$ $jugador$ + $Liga$ $donde$ $juega$
 
-Al utilizar una transformación logarítmica, la interpretación del modelo es diferente. La variación de la variable a predecir es en términos porcentuales según aumenta en una unidad la variable predictora numérica o según la variable de referencia categórica.
+Al utilizar una transformación logarítmica, la interpretación del modelo es diferente, ya que se introduce una relación de semielasticidad entre las variables. La variación de la variable a predecir es en términos porcentuales según aumenta en una unidad la variable predictora numérica o según la variable de referencia categórica.
 
 Por lo tanto:
 
@@ -751,6 +760,46 @@ summary(modelo_clasico_multiple)
 
 
 ### Diagnóstico
+
+Los siguientes histogramas muestran como mejora la ditribución de los precios aplicando la distribución lograrítmica logrando una aproximación a los normalidad y homocedasticidad de los datos a predecir.
+
+```{r, message=FALSE, warning=FALSE}
+hist1 <- ggplot(df, aes(x=precio))+
+  geom_histogram() +
+  labs(title = "Histograma del Precio") + 
+  theme_bw()
+hist2 <- ggplot(df, aes(x=log(precio)))+
+  geom_histogram() +
+  labs(title = "Histograma del log(Precio)") + 
+  theme_bw()
+grid.arrange( hist1, hist2, nrow=1)
+```
+
+En este caso, el valor de $R^2$ ajustado del modelo es con respecto a la variable transformada, por lo tanto tenemos que predecir todos los datos utilizados en el modelo y trasformarlos exponencialmente para obtener el valor real del salario por hora esperado.
+
+Finalmente, se calcula el valor de $R^2$ ajustado “manualmente”.
+
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_clasico_multiple <- augment(modelo_clasico_multiple, newdata = train_data)
+pred_modelo_clasico_multiple$exp_fitted <- exp(pred_modelo_clasico_multiple$.fitted)
+metricas1 = metrics(data = pred_modelo_clasico_multiple,
+                    truth = precio, estimate = exp_fitted) %>% 
+  mutate(.estimate = round(.estimate, 4))
+#rcuadrado <- metricas1$.estimate[2]
+#cat("R-cuadrado = ", rcuadrado)
+#metricas1
+# Calcular el R² ajustado manualmente
+n <- nrow(pred_modelo_clasico_multiple)  # Número de observaciones
+p <- length(coef(modelo_clasico_multiple)) - 1  # Número de predictores (restamos 1 por el intercepto)
+
+r2 <- metricas1 %>% filter(.metric == "rsq") %>% pull(.estimate)
+r2_ajustado <- 1 - ((1 - r2) * (n - 1) / (n - p - 1))
+
+# Mostrar el R² ajustado
+cat("R^2 ajustado = ", r2_ajustado)
+```
+
+
 
 ```{r, message=FALSE, warning=FALSE}
 datos_augmentados <- augment(modelo_clasico_multiple)
@@ -796,14 +845,12 @@ grid.arrange(g9, g10, g11, g12, nrow=2)
   - Premier League: +0.818 respecto a la liga de referencia, (p-value < 2e-16) indica un aumento estadísticamente significativo de 126.5% en el precio de los jugadores de la Premier League con respecto a los jugadores de La Liga (España)
   - Ligue 1 (Francia): -0.296 respecto a la liga de referencia, (p-value = 0.003) indica una disminución estadísticamente significativa de 25.6% en el precio de los jugadores de la Ligue 1 con respecto a los jugadores de La Liga.
   - Bundesliga: -0.285 respecto de la liga de referencia (p-value = 0.005) indica una disminución estadísticamente significativa de 24.8% en el preicio de los jugadores de la Bundesliga con respecto a La Liga.
-- El R² ajustado es 0.4619, similar al modelo anterior pero con mejor interpretabilidad
+- El R² ajustado es 0.29, menor al modelo anterior pero con mejor interpretabilidad y diagnóstico.
 
 #### Evaluación del Rendimiento
 
 ##### Datos de entrenamiento
 ```{r, message=FALSE, warning=FALSE}
-pred_modelo_clasico_multiple <- augment(modelo_clasico_multiple, newdata = train_data)
-pred_modelo_clasico_multiple$exp_fitted <- exp(pred_modelo_clasico_multiple$.fitted)
 cat("RMSE: ", rmse(data = pred_modelo_clasico_multiple, truth = precio, estimate = exp_fitted)$.estimate)
 ```
 ```{r, message=FALSE, warning=FALSE}
@@ -899,7 +946,62 @@ kable(metricas)
 - El RMSE es menor para el modelo clásico, sin embargo, al estar trabajando con datos que tienen outliers lo correcto es compararlo contra los valores de MAE.
 - El MAE es menor para el modelo robusto, mostrando un mejor desempeño frente al modelo clásico.
 
-## Primero Modelo Multiple Robusto
+
+## Primer Modelo Multiple Robusto
+
+$Precio$ = $Goles$ + $Edad$ + $Edad^2$ + $Asistencias$ + $Continente$ $de$ $nacimiento$ $del$ $jugador$ + $Liga$ $donde$ $juega$
+
+```{r, message=FALSE, warning=FALSE}
+modelo_multiple_lmrob <- lmrob(formula = precio ~ Gls + Age + I(Age^2) + Ast + 
+                                 continente + current_club_domestic_competition_id, 
+                               data=train_data)
+summary(modelo_multiple_lmrob)
+```
+
+
+#### Interpretación del Modelo
+- El modelo incorpora múltiples variables predictoras: goles, edad (lineal y cuadrática), asistencias, continente de origen y liga
+- Los coeficientes más significativos son:
+  - Goles: +545,409 por gol (p-value = 9.71e-09). Esto indica que el precio de los jugadores que tienen misma cantidad de asistencias y edad aumenta €€545,409 por cada gol anotado
+  - Asistencias: +814,283 por asistencia (p-value = 2.51e-10). Esto indica que el precio de los jugadores que tienen misma cantidad de goles y edad aumenta €814,283 por cada asistencia adicional.
+  - Edad: efecto cuadrático
+  - La variable continente ya no es significativa a la hora de explicar el precio de los jugadores, pero se observa como se invierte la relación con los jugadores europeas donde los africanos son mas valorados en este modelo que en el simple.
+  - Premier League: +3,358,109 respecto a la liga de referencia, La Liga (España) (p-value = 0.000357). Los jugadores de la liga inglesa siguen siendo los mas valorados pero en menor medida que el modelo simple.
+  - El resto de las ligas dejan de ser significativas, pero se mantiene la tendencia que estos jugadores son menor valorados que los de la liga española.
+- El R² ajustado es 0.3699, indicando que el modelo explica aproximadamente el 37% de la variabilidad, disminuyendo con respecto al 47% del modelo simple
+
+
+### Evaluación y comparación de modelos frente a datos de prueba
+
+```{r, message=FALSE, warning=FALSE}
+modelos_comparacion <- list(multiple_1 = modelo_clasico_multiple_1,
+                robusto_1 = modelo_multiple_lmrob)
+
+lista_predicciones_testing = map(.x = modelos_comparacion, .f = augment, newdata = test_data) 
+
+
+metricas_clasico_test = lista_predicciones_testing$multiple_1 %>% 
+  metrics(truth=precio, estimate=.fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas_robusto_test = lista_predicciones_testing$robusto_1 %>%
+  metrics(truth=precio, estimate=.fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+
+metrica <- rbind(metricas_clasico_test[c(1,3),], metricas_robusto_test[c(1,3),])
+
+modelitos_comparacion <- c(rep("Multiple - Precio",2),
+               rep("Robusto - Precio - psi = bisquare",2))
+metricas <- cbind(modelitos_comparacion, metrica)
+kable(metricas)
+```
+
+- El RMSE es menor para el modelo clásico, sin embargo, al estar trabajando con datos que tienen outliers lo correcto es compararlo contra los valores de MAE.
+- El MAE es menor para el modelo robusto, mostrando un mejor desempeño frente al modelo clásico.
+
+
+## Segundo Modelo Multiple Robusto
 
 $log(Precio)$ = $Goles$ + $Edad$ + $Edad^2$ + $Asistencias$ + $Continente$ $de$ $nacimiento$ $del$ $jugador$ + $Liga$ $donde$ $juega$
 
@@ -908,6 +1010,26 @@ modelo_multiple_lmrob_2 <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + 
                                  continente + current_club_domestic_competition_id, 
                                data=train_data)
 summary(modelo_multiple_lmrob_2)
+```
+
+```{r, message=FALSE, warning=FALSE}
+pred_modelo_robusto_multiple <- augment(modelo_multiple_lmrob_2, newdata = train_data)
+pred_modelo_robusto_multiple$exp_fitted <- exp(pred_modelo_robusto_multiple$.fitted)
+metricas2 = metrics(data = pred_modelo_robusto_multiple,
+                    truth = precio, estimate = exp_fitted) %>% 
+  mutate(.estimate = round(.estimate, 4))
+#rcuadrado <- metricas1$.estimate[2]
+#cat("R-cuadrado = ", rcuadrado)
+#metricas1
+# Calcular el R² ajustado manualmente
+n_rob <- nrow(pred_modelo_robusto_multiple)  # Número de observaciones
+p_rob <- length(coef(modelo_multiple_lmrob_2)) - 1  # Número de predictores (restamos 1 por el intercepto)
+
+r2_rob <- metricas2 %>% filter(.metric == "rsq") %>% pull(.estimate)
+r2_ajustado_rob <- 1 - ((1 - r2_rob) * (n_rob - 1) / (n_rob - p_rob - 1))
+
+# Mostrar el R² ajustado
+cat("R^2 ajustado = ", r2_ajustado_rob)
 ```
 
 #### Interpretación del Modelo
@@ -920,41 +1042,8 @@ summary(modelo_multiple_lmrob_2)
   - Premier League: +0.917 respecto a la liga de referencia, (p-value < 3.66e-16) indica un aumento estadísticamente significativo de 150.2% en el precio de los jugadores de la Premier League con respecto a los jugadores de La Liga (España)
   - Ligue 1 (Francia): -0.231 respecto a la liga de referencia, (p-value = 0.03) indica una disminución estadísticamente significativa de 20.6% en el precio de los jugadores de la Ligue 1 con respecto a los jugadores de La Liga.
   - Bundesliga: -0.282 respecto de la liga de referencia (p-value = 0.004) indica una disminución estadísticamente significativa de 24.6% en el preicio de los jugadores de la Bundesliga con respecto a La Liga.
-- El R² ajustado es 0.4793, similar al modelo anterior pero con mejor interpretabilidad, aumentando un 1.74% con respecto al módelo clásico.
+- El R² ajustado es 0.30, similar al modelo clásico.
 
-# ESTO NO SE SI CORRESPONDE PONERLO PORQUE AL SER UNA FORMA NO PARAMÉTRICA CREO QUE NO CORRESPONDE
-### Diagnóstico
-
-```{r, message=FALSE, warning=FALSE}
-#Diagnóstico
-datos_augmentados <- augment(modelo_multiple_lmrob_2)
-datos_augmentados$.std.resid <- datos_augmentados$.resid/(modelo_multiple_lmrob_2$scale*sqrt(1-hatvalues(modelo_multiple_lmrob_2)))
-datos_augmentados$.hat <- hatvalues(modelo_multiple_lmrob_2)
-g13 <- ggplot(datos_augmentados, aes(.fitted, .resid)) +
-  geom_point() +
-  geom_hline(yintercept = 0) +
-  geom_smooth(se = FALSE) +
-  labs(title = "Residuos vs valores predichos") + 
-  theme_bw()
-g14 <- ggplot(datos_augmentados, aes(sample = .std.resid)) +
-  stat_qq() +
-  geom_abline() +
-  labs(title = "Normal QQ plot") + 
-  theme_bw()
-g15 <- ggplot(datos_augmentados, aes(.fitted, sqrt(abs(.std.resid)))) +
-  geom_point() +
-  geom_smooth(se = FALSE) + 
-  theme_bw() +
-  labs(title = "Scale-location plot")
-g16 <- ggplot(datos_augmentados, aes(.hat, .std.resid)) +
-  geom_vline(size = 2, colour = "white", xintercept = 0) +
-  geom_hline(size = 2, colour = "white", yintercept = 0) +
-  geom_point() + 
-  geom_smooth(se = FALSE) + 
-  theme_bw() +
-  labs(title = "Residual vs leverage")
-grid.arrange(g13, g14, g15, g16, nrow = 2)
-```
 
 ### Evaluación y comparación de modelos frente a datos de prueba
 
@@ -999,7 +1088,17 @@ modelo_multiple_lmrob_lqq <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) 
                                  data=train_data,
                            psi = "lqq")
 
+modelo_multiple_lmrob_lqq_2 <- lmrob(formula = precio ~ Gls + Age + I(Age^2) + Ast + 
+                                   continente + current_club_domestic_competition_id, 
+                                 data=train_data,
+                           psi = "lqq")
+
 modelo_multiple_lmrob_welsh <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                     continente + current_club_domestic_competition_id, 
+                                   data=train_data,
+                                   psi = "welsh")
+
+modelo_multiple_lmrob_welsh_2 <- lmrob(formula = precio ~ Gls + Age + I(Age^2) + Ast + 
                                      continente + current_club_domestic_competition_id, 
                                    data=train_data,
                                    psi = "welsh")
@@ -1009,8 +1108,17 @@ modelo_multiple_lmrob_optimal <- lmrob(formula = log(precio) ~ Gls + Age + I(Age
                                      data=train_data,
                                      psi = "optimal")
 
+modelo_multiple_lmrob_optimal_2 <- lmrob(formula = precio ~ Gls + Age + I(Age^2) + Ast + 
+                                       continente + current_club_domestic_competition_id, 
+                                     data=train_data,
+                                     psi = "optimal")
 
 modelo_multiple_lmrob_hampel <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
+                                         continente + current_club_domestic_competition_id, 
+                                       data=train_data,
+                                       psi = "hampel")
+
+modelo_multiple_lmrob_hampel_2 <- lmrob(formula = precio ~ Gls + Age + I(Age^2) + Ast + 
                                          continente + current_club_domestic_competition_id, 
                                        data=train_data,
                                        psi = "hampel")
@@ -1020,14 +1128,24 @@ modelo_multiple_lmrob_ggw <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) 
                                        data=train_data,
                                        psi = "ggw")
 
+modelo_multiple_lmrob_ggw_2 <- lmrob(formula = precio ~ Gls + Age + I(Age^2) + Ast + 
+                                         continente + current_club_domestic_competition_id, 
+                                       data=train_data,
+                                       psi = "ggw")
 
 modelos <- list(multiple_1 = modelo_clasico_multiple_1, 
                 multiple_2 = modelo_clasico_multiple,
+                robusto_1 = modelo_multiple_lmrob,
                 robusto_2 = modelo_multiple_lmrob_2,
+                robusto_3_1 = modelo_multiple_lmrob_lqq_2,
                 robusto_3 = modelo_multiple_lmrob_lqq,
+                robusto_4_1 = modelo_multiple_lmrob_welsh_2,
                 robusto_4 = modelo_multiple_lmrob_welsh,
+                robusto_5_1 = modelo_multiple_lmrob_optimal_2,
                 robusto_5 = modelo_multiple_lmrob_optimal,
+                robusto_6_1 = modelo_multiple_lmrob_hampel_2,
                 robusto_6 = modelo_multiple_lmrob_hampel,
+                robusto_7_1 = modelo_multiple_lmrob_ggw_2,
                 robusto_7 = modelo_multiple_lmrob_ggw)
 
 lista_predicciones_testing = map(.x = modelos, .f = augment, newdata = test_data) 
@@ -1047,9 +1165,17 @@ metricas3_test = lista_predicciones_testing$robusto_2 %>%
   metrics(truth=precio, estimate=exp_fitted) %>%
   mutate(.estimate=round(.estimate, 4))
 
+metricas4_1_test = lista_predicciones_testing$robusto_3_1 %>%  
+  metrics(truth=precio, estimate=.fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
 metricas4_test = lista_predicciones_testing$robusto_3 %>%  
   mutate(exp_fitted= exp(.fitted)) %>% 
   metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas5_1_test = lista_predicciones_testing$robusto_4_1 %>%  
+  metrics(truth=precio, estimate=.fitted) %>%
   mutate(.estimate=round(.estimate, 4))
 
 metricas5_test = lista_predicciones_testing$robusto_4 %>%  
@@ -1057,14 +1183,26 @@ metricas5_test = lista_predicciones_testing$robusto_4 %>%
   metrics(truth=precio, estimate=exp_fitted) %>%
   mutate(.estimate=round(.estimate, 4))
 
+metricas6_1_test = lista_predicciones_testing$robusto_5_1 %>%  
+  metrics(truth=precio, estimate=.fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
 metricas6_test = lista_predicciones_testing$robusto_5 %>%  
   mutate(exp_fitted= exp(.fitted)) %>% 
   metrics(truth=precio, estimate=exp_fitted) %>%
   mutate(.estimate=round(.estimate, 4))
 
+metricas7_1_test = lista_predicciones_testing$robusto_6_1 %>%  
+  metrics(truth=precio, estimate=.fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
 metricas7_test = lista_predicciones_testing$robusto_6 %>%  
   mutate(exp_fitted= exp(.fitted)) %>% 
   metrics(truth=precio, estimate=exp_fitted) %>%
+  mutate(.estimate=round(.estimate, 4))
+
+metricas8_1_test = lista_predicciones_testing$robusto_7_1 %>%  
+  metrics(truth=precio, estimate=.fitted) %>%
   mutate(.estimate=round(.estimate, 4))
 
 metricas8_test = lista_predicciones_testing$robusto_7 %>%  
@@ -1074,22 +1212,36 @@ metricas8_test = lista_predicciones_testing$robusto_7 %>%
 
 
 
-metricas <- rbind(metricas1_test[c(1,3),], metricas2_test[c(1,3),])
-metricas <- rbind(metricas, metricas3_test[c(1,3),])
-metricas <- rbind(metricas, metricas4_test[c(1,3),])
-metricas <- rbind(metricas, metricas5_test[c(1,3),])
-metricas <- rbind(metricas, metricas6_test[c(1,3),])
-metricas <- rbind(metricas, metricas7_test[c(1,3),])
-metricas <- rbind(metricas, metricas8_test[c(1,3),])
+metricas <- rbind(metricas1_test, metricas2_test)
+metricas <- rbind(metricas, metricas_robusto_test)
+metricas <- rbind(metricas, metricas3_test)
+metricas <- rbind(metricas, metricas4_1_test)
+metricas <- rbind(metricas, metricas4_test)
+metricas <- rbind(metricas, metricas5_1_test)
+metricas <- rbind(metricas, metricas5_test)
+metricas <- rbind(metricas, metricas6_1_test)
+metricas <- rbind(metricas, metricas6_test)
+metricas <- rbind(metricas, metricas7_1_test)
+metricas <- rbind(metricas, metricas7_test)
+metricas <- rbind(metricas, metricas8_1_test)
+metricas <- rbind(metricas, metricas8_test)
 
-modelitos <- c(rep("Multiple - Precio",2),
-               rep("Multiple - log(Precio)",2),
-               rep("Robusto - log(Precio) - psi = bisqare",2),
-               rep("Robusto - log(Precio) - psi = lqq",2),
-               rep("Robusto - log(Precio) - psi = welsh",2), 
-               rep("Robusto - log(Precio) - psi = optimal",2),
-               rep("Robusto - log(Precio) - psi = hampel",2),
-               rep("Robusto - log(Precio) - psi = ggw",2))
+modelitos <- c(rep("Clasico - Precio",3),
+               rep("Clasico - log(Precio)",3),
+               rep("Robusto - Precio",3),
+               rep("Robusto - log(Precio) - psi = bisquare",3),
+               rep("Robusto - Precio - psi = lqq",3),
+               rep("Robusto - log(Precio) - psi = lqq",3),
+               rep("Robusto - Precio - psi = welsh",3), 
+               rep("Robusto - log(Precio) - psi = welsh",3), 
+               rep("Robusto - Precio - psi = optimal",3),
+               rep("Robusto - log(Precio) - psi = optimal",3),
+               rep("Robusto - Precio - psi = hampel",3),
+               rep("Robusto - log(Precio) - psi = hampel",3),
+               rep("Robusto - Precio - psi = ggw",3),
+               rep("Robusto - log(Precio) - psi = ggw",3))
+
+
 metricas <- cbind(modelitos, metricas)
 kable(metricas)
 ```
@@ -1097,30 +1249,106 @@ kable(metricas)
 - El MAE de todos los modelos robustos es menor que el de los modelos clásicos
 - El modelo que utiliza la función $\rho$ optimal tiene le menor MAE, siendo el de mejor desempeño. Esto es posible ya ya que la funcion optimal es apropiada para datos donde los outliers no son muy pronunciados, que parece ser el caso del precio de los jugadores.
 
+```{r, message=FALSE, warning=FALSE, fig.width=12, fig.height=8}
+# Calcular métricas para entrenamiento y prueba
+calcular_metricas <- function(modelo, datos, tipo) {
+  pred <- augment(modelo, newdata = datos)
+  if("log" %in% names(modelo$call)) {
+    pred$pred_final <- exp(pred$.fitted)
+  } else {
+    pred$pred_final <- pred$.fitted
+  }
+  
+  metrics(data = pred, truth = precio, estimate = pred_final) %>%
+    mutate(.estimate = round(.estimate, 4),
+           tipo_datos = tipo)
+}
 
+# Calcular métricas
+metricas_entrenamiento <- map_dfr(modelos, ~calcular_metricas(., train_data, "Entrenamiento"), .id = "modelo")
+metricas_prueba <- map_dfr(modelos, ~calcular_metricas(., test_data, "Prueba"), .id = "modelo")
+
+# Crear dataframe de métricas
+df_metricas <- data.frame(
+  modelo = rep(modelitos, 2),
+  tipo_datos = c(metricas_entrenamiento$tipo_datos, metricas_prueba$tipo_datos),
+  metrica = c(metricas_entrenamiento$.metric, metricas_prueba$.metric),
+  valor = c(metricas_entrenamiento$.estimate, metricas_prueba$.estimate)
+) %>%
+  distinct() %>%
+  filter(metrica %in% c("rmse", "mae", "rsq"))
+
+# Gráfico RMSE
+ggplot(df_metricas %>% filter(metrica == "rmse"), 
+       aes(x = valor, y = modelo, fill = tipo_datos)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = scales::comma(valor)), 
+            position = position_dodge(width = 0.9),
+            hjust = 1,  # Texto dentro das barras
+            color = "black",  # Texto em preto
+            size = 3) +
+  labs(title = "Comparación de RMSE por Modelo",
+       x = "RMSE",
+       y = "Modelo",
+       fill = "Conjunto de datos") +
+  scale_fill_manual(values = c("Entrenamiento" = "#99CCFF", "Prueba" = "#003366"))
+
+# Gráfico MAE
+ggplot(df_metricas %>% filter(metrica == "mae"), 
+       aes(x = valor, y = modelo, fill = tipo_datos)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = scales::comma(valor)), 
+            position = position_dodge(width = 0.9),
+            hjust = 1,
+            color = "black",
+            size = 3) +
+  labs(title = "Comparación de MAE por Modelo",
+       x = "MAE",
+       y = "Modelo",
+       fill = "Conjunto de datos") +
+  scale_fill_manual(values = c("Entrenamiento" = "#99FF99", "Prueba" = "#006600"))
+
+# Gráfico R²
+ggplot(df_metricas %>% filter(metrica == "rsq"), 
+       aes(x = valor, y = modelo, fill = tipo_datos)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = scales::percent(valor)), 
+            position = position_dodge(width = 0.9),
+            hjust = 1,
+            color = "black",
+            size = 3) +
+  labs(title = "Comparación de R² por Modelo",
+       x = "R² (porcentaje)",
+       y = "Modelo",
+       fill = "Conjunto de datos") +
+  scale_fill_manual(values = c("Entrenamiento" = "#FFB6C1", "Prueba" = "#8B0000"))
+```
 
 # Conclusiones
 
 El análisis estadístico revela patrones fundamentales en la valoración de jugadores que desafían varias percepciones tradicionales del mercado. 
+
 La evidencia empírica demuestra una clara segmentación del mercado europeo, con ineficiencias significativas que crean oportunidades estratégicas.
 
 La elección metodológica de utilizar regresión robusta con transformación logarítmica demostró ser crucial para la validez del análisis. 
-El método MM-estimation implementado en Robustbase, que utiliza por defecto la función bisquare, permitió manejar eficazmente la heterogeneidad inherente al mercado de fichajes, 
-donde las valoraciones extremas son comunes pero no necesariamente outliers estadísticos. 
-La transformación logarítmica no solo mejoró las propiedades estadísticas del modelo, sino que también proporcionó una interpretación más intuitiva en términos de variaciones porcentuales, 
-alineándose naturalmente con la forma en que el mercado evalúa los cambios en el valor de los jugadores. 
+
+El método MM-estimation implementado en Robustbase, que utiliza por defecto la función bisquare, permitió manejar eficazmente la heterogeneidad inherente al mercado de fichajes, donde las valoraciones extremas son comunes pero no necesariamente outliers estadísticos. 
+
+La transformación logarítmica no solo mejoró las propiedades estadísticas del modelo, sino que también proporcionó una interpretación más intuitiva en términos de variaciones porcentuales, alineándose naturalmente con la forma en que el mercado evalúa los cambios en el valor de los jugadores. 
+
 El uso de estimadores robustos reveló que el mercado de fichajes, aunque volátil, mantiene una estructura subyacente que puede ser modelada de manera más precisa cuando se utilizan métodos que equilibran robustez y eficiencia estadística.
 
-El modelo robusto, con un R² ajustado de 47.93%, captura las dinámicas fundamentales del mercado mientras filtra el "ruido" especulativo. 
+El modelo robusto, con un R² ajustado de 30%, captura las dinámicas fundamentales del mercado mientras filtra el "ruido" especulativo. 
+
 La efectividad de la función bisquare sugiere que, contrario a la percepción popular, las valoraciones extremas en el mercado siguen patrones identificables y no son puramente especulativas.
 
 La Premier League mantiene una prima de valoración del 150.2% sobre La Liga, un diferencial que excede significativamente las diferencias en ingresos operativos entre estas ligas. 
+
 Esta sobrevaloración sistemática sugiere una burbuja estructural en el mercado inglés, particularmente notable en comparación con Bundesliga (-24.6%) y Ligue 1 (-20.6%), 
 donde el talento parece estar sistemáticamente infravalorado.
 
 Una observación particularmente relevante es la mayor valoración de las asistencias (+18.5%) sobre los goles (+11.7%). 
-Esta diferencia refleja una evolución en la comprensión del valor creativo en el fútbol moderno, donde la capacidad de generar oportunidades se premia por encima de la finalización. 
-Este patrón sugiere una sofisticación creciente en la evaluación del talento.
+Esta diferencia refleja una evolución en la comprensión del valor creativo en el fútbol moderno, donde la capacidad de generar oportunidades se premia por encima de la finalización. Este patrón sugiere una sofisticación creciente en la evaluación del talento.
 
 La relación cuadrática con la edad emerge como un factor crítico en la valoración, señalando una ventana óptima de valoración que el mercado reconoce consistentemente. 
 Este patrón tiene implicaciones profundas para la gestión de activos deportivos y la planificación de plantillas a largo plazo.
