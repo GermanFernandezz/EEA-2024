@@ -250,7 +250,8 @@ Luego utilizaremos esta nueva variable para realizar la división del dataset de
 El objetivo es que quedan estratificados los jugadores mas caros u outliers, por eso no se realiza una división por debajo de Q2.
 ```{r, message=FALSE, warning=FALSE}
 # Carga de datset
-setwd("/Users/jorgefernandez/Documents/Cienciadedatos/EEA2024/TP02")
+# setwd("/Users/jorgefernandez/Documents/Cienciadedatos/EEA2024/TP02")
+setwd("/Users/rmarques/UBA/EEA/german-eea-2024/TP02")
 df <- as.data.frame(read.csv("dataset.csv"))
 df <- as.data.frame(df)
 df <- na.omit(df)
@@ -1248,7 +1249,80 @@ kable(metricas)
 - El MAE de todos los modelos robustos es menor que el de los modelos clásicos
 - El modelo que utiliza la función $\rho$ optimal tiene le menor MAE, siendo el de mejor desempeño. Esto es posible ya ya que la funcion optimal es apropiada para datos donde los outliers no son muy pronunciados, que parece ser el caso del precio de los jugadores.
 
+```{r, message=FALSE, warning=FALSE, fig.width=12, fig.height=8}
+# Calcular métricas para entrenamiento y prueba
+calcular_metricas <- function(modelo, datos, tipo) {
+  pred <- augment(modelo, newdata = datos)
+  if("log" %in% names(modelo$call)) {
+    pred$pred_final <- exp(pred$.fitted)
+  } else {
+    pred$pred_final <- pred$.fitted
+  }
+  
+  metrics(data = pred, truth = precio, estimate = pred_final) %>%
+    mutate(.estimate = round(.estimate, 4),
+           tipo_datos = tipo)
+}
 
+# Calcular métricas
+metricas_entrenamiento <- map_dfr(modelos, ~calcular_metricas(., train_data, "Entrenamiento"), .id = "modelo")
+metricas_prueba <- map_dfr(modelos, ~calcular_metricas(., test_data, "Prueba"), .id = "modelo")
+
+# Crear dataframe de métricas
+df_metricas <- data.frame(
+  modelo = rep(modelitos, 2),
+  tipo_datos = c(metricas_entrenamiento$tipo_datos, metricas_prueba$tipo_datos),
+  metrica = c(metricas_entrenamiento$.metric, metricas_prueba$.metric),
+  valor = c(metricas_entrenamiento$.estimate, metricas_prueba$.estimate)
+) %>%
+  distinct() %>%
+  filter(metrica %in% c("rmse", "mae", "rsq"))
+
+# Gráfico RMSE
+ggplot(df_metricas %>% filter(metrica == "rmse"), 
+       aes(x = valor, y = modelo, fill = tipo_datos)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = scales::comma(valor)), 
+            position = position_dodge(width = 0.9),
+            hjust = 1,  # Texto dentro das barras
+            color = "black",  # Texto em preto
+            size = 3) +
+  labs(title = "Comparación de RMSE por Modelo",
+       x = "RMSE",
+       y = "Modelo",
+       fill = "Conjunto de datos") +
+  scale_fill_manual(values = c("Entrenamiento" = "#99CCFF", "Prueba" = "#003366"))
+
+# Gráfico MAE
+ggplot(df_metricas %>% filter(metrica == "mae"), 
+       aes(x = valor, y = modelo, fill = tipo_datos)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = scales::comma(valor)), 
+            position = position_dodge(width = 0.9),
+            hjust = 1,
+            color = "black",
+            size = 3) +
+  labs(title = "Comparación de MAE por Modelo",
+       x = "MAE",
+       y = "Modelo",
+       fill = "Conjunto de datos") +
+  scale_fill_manual(values = c("Entrenamiento" = "#99FF99", "Prueba" = "#006600"))
+
+# Gráfico R²
+ggplot(df_metricas %>% filter(metrica == "rsq"), 
+       aes(x = valor, y = modelo, fill = tipo_datos)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = scales::percent(valor)), 
+            position = position_dodge(width = 0.9),
+            hjust = 1,
+            color = "black",
+            size = 3) +
+  labs(title = "Comparación de R² por Modelo",
+       x = "R² (porcentaje)",
+       y = "Modelo",
+       fill = "Conjunto de datos") +
+  scale_fill_manual(values = c("Entrenamiento" = "#FFB6C1", "Prueba" = "#8B0000"))
+```
 
 # Conclusiones
 
