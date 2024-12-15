@@ -1082,16 +1082,16 @@ Se aplica la misma fórmula que el modelo anterior pero en lugar de usar la func
 
 ### Evaluación de todos los modelos
 
-```{r, message=FALSE, warning=FALSE}
+```{r, message=FALSE, warning=FALSE, fig.width=12, fig.height=8}
 modelo_multiple_lmrob_lqq <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
                                    continente + current_club_domestic_competition_id, 
                                  data=train_data,
-                           psi = "lqq")
+                                 psi = "lqq")
 
 modelo_multiple_lmrob_lqq_2 <- lmrob(formula = precio ~ Gls + Age + I(Age^2) + Ast + 
                                    continente + current_club_domestic_competition_id, 
                                  data=train_data,
-                           psi = "lqq")
+                                 psi = "lqq")
 
 modelo_multiple_lmrob_welsh <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
                                      continente + current_club_domestic_competition_id, 
@@ -1113,119 +1113,21 @@ modelo_multiple_lmrob_optimal_2 <- lmrob(formula = precio ~ Gls + Age + I(Age^2)
                                      data=train_data,
                                      psi = "optimal")
 
-modelo_multiple_lmrob_hampel <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
-                                         continente + current_club_domestic_competition_id, 
-                                       data=train_data,
-                                       psi = "hampel")
+# Agrupar todos los modelos
+modelos <- list(
+    multiple_1 = modelo_clasico_multiple_1, 
+    multiple_2 = modelo_clasico_multiple,
+    robusto_1 = modelo_multiple_lmrob,
+    robusto_2 = modelo_multiple_lmrob_2,
+    robusto_3_1 = modelo_multiple_lmrob_lqq_2,
+    robusto_3 = modelo_multiple_lmrob_lqq,
+    robusto_4_1 = modelo_multiple_lmrob_welsh_2,
+    robusto_4 = modelo_multiple_lmrob_welsh,
+    robusto_5_1 = modelo_multiple_lmrob_optimal_2,
+    robusto_5 = modelo_multiple_lmrob_optimal
+)
 
-modelo_multiple_lmrob_hampel_2 <- lmrob(formula = precio ~ Gls + Age + I(Age^2) + Ast + 
-                                         continente + current_club_domestic_competition_id, 
-                                       data=train_data,
-                                       psi = "hampel")
-
-modelo_multiple_lmrob_ggw <- lmrob(formula = log(precio) ~ Gls + Age + I(Age^2) + Ast + 
-                                         continente + current_club_domestic_competition_id, 
-                                       data=train_data,
-                                       psi = "ggw")
-
-modelo_multiple_lmrob_ggw_2 <- lmrob(formula = precio ~ Gls + Age + I(Age^2) + Ast + 
-                                         continente + current_club_domestic_competition_id, 
-                                       data=train_data,
-                                       psi = "ggw")
-
-modelos <- list(multiple_1 = modelo_clasico_multiple_1, 
-                multiple_2 = modelo_clasico_multiple,
-                robusto_1 = modelo_multiple_lmrob,
-                robusto_2 = modelo_multiple_lmrob_2,
-                robusto_3_1 = modelo_multiple_lmrob_lqq_2,
-                robusto_3 = modelo_multiple_lmrob_lqq,
-                robusto_4_1 = modelo_multiple_lmrob_welsh_2,
-                robusto_4 = modelo_multiple_lmrob_welsh,
-                robusto_5_1 = modelo_multiple_lmrob_optimal_2,
-                robusto_5 = modelo_multiple_lmrob_optimal,
-                robusto_6_1 = modelo_multiple_lmrob_hampel_2,
-                robusto_6 = modelo_multiple_lmrob_hampel,
-                robusto_7_1 = modelo_multiple_lmrob_ggw_2,
-                robusto_7 = modelo_multiple_lmrob_ggw)
-
-lista_predicciones_testing = map(.x = modelos, .f = augment, newdata = test_data) 
-
-
-metricas1_test = lista_predicciones_testing$multiple_1 %>%  
-  metrics(truth=precio, estimate=.fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-metricas2_test = lista_predicciones_testing$multiple_2 %>%  
-  mutate(exp_fitted= exp(.fitted)) %>% 
-  metrics(truth=precio, estimate=exp_fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-metricas3_test = lista_predicciones_testing$robusto_2 %>% 
-  mutate(exp_fitted= exp(.fitted)) %>%
-  metrics(truth=precio, estimate=exp_fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-metricas4_1_test = lista_predicciones_testing$robusto_3_1 %>%  
-  metrics(truth=precio, estimate=.fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-metricas4_test = lista_predicciones_testing$robusto_3 %>%  
-  mutate(exp_fitted= exp(.fitted)) %>% 
-  metrics(truth=precio, estimate=exp_fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-metricas5_1_test = lista_predicciones_testing$robusto_4_1 %>%  
-  metrics(truth=precio, estimate=.fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-metricas5_test = lista_predicciones_testing$robusto_4 %>%  
-  mutate(exp_fitted= exp(.fitted)) %>% 
-  metrics(truth=precio, estimate=exp_fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-metricas6_1_test = lista_predicciones_testing$robusto_5_1 %>%  
-  metrics(truth=precio, estimate=.fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-metricas6_test = lista_predicciones_testing$robusto_5 %>%  
-  mutate(exp_fitted= exp(.fitted)) %>% 
-  metrics(truth=precio, estimate=exp_fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-metricas7_1_test = lista_predicciones_testing$robusto_6_1 %>%  
-  metrics(truth=precio, estimate=.fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-metricas7_test = lista_predicciones_testing$robusto_6 %>%  
-  mutate(exp_fitted= exp(.fitted)) %>% 
-  metrics(truth=precio, estimate=exp_fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-metricas8_1_test = lista_predicciones_testing$robusto_7_1 %>%  
-  metrics(truth=precio, estimate=.fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-metricas8_test = lista_predicciones_testing$robusto_7 %>%  
-  mutate(exp_fitted= exp(.fitted)) %>% 
-  metrics(truth=precio, estimate=exp_fitted) %>%
-  mutate(.estimate=round(.estimate, 4))
-
-
-
-metricas <- rbind(metricas1_test, metricas2_test)
-metricas <- rbind(metricas, metricas_robusto_test)
-metricas <- rbind(metricas, metricas3_test)
-metricas <- rbind(metricas, metricas4_1_test)
-metricas <- rbind(metricas, metricas4_test)
-metricas <- rbind(metricas, metricas5_1_test)
-metricas <- rbind(metricas, metricas5_test)
-metricas <- rbind(metricas, metricas6_1_test)
-metricas <- rbind(metricas, metricas6_test)
-metricas <- rbind(metricas, metricas7_1_test)
-metricas <- rbind(metricas, metricas7_test)
-metricas <- rbind(metricas, metricas8_1_test)
-metricas <- rbind(metricas, metricas8_test)
-
+# Definir nombres de modelos
 modelitos <- c(rep("Clasico - Precio",3),
                rep("Clasico - log(Precio)",3),
                rep("Robusto - Precio",3),
@@ -1235,21 +1137,8 @@ modelitos <- c(rep("Clasico - Precio",3),
                rep("Robusto - Precio - psi = welsh",3), 
                rep("Robusto - log(Precio) - psi = welsh",3), 
                rep("Robusto - Precio - psi = optimal",3),
-               rep("Robusto - log(Precio) - psi = optimal",3),
-               rep("Robusto - Precio - psi = hampel",3),
-               rep("Robusto - log(Precio) - psi = hampel",3),
-               rep("Robusto - Precio - psi = ggw",3),
-               rep("Robusto - log(Precio) - psi = ggw",3))
+               rep("Robusto - log(Precio) - psi = optimal",3))
 
-
-metricas <- cbind(modelitos, metricas)
-kable(metricas)
-```
-
-- El MAE de todos los modelos robustos es menor que el de los modelos clásicos
-- El modelo que utiliza la función $\rho$ optimal tiene le menor MAE, siendo el de mejor desempeño. Esto es posible ya ya que la funcion optimal es apropiada para datos donde los outliers no son muy pronunciados, que parece ser el caso del precio de los jugadores.
-
-```{r, message=FALSE, warning=FALSE, fig.width=12, fig.height=8}
 # Calcular métricas para entrenamiento y prueba
 calcular_metricas <- function(modelo, datos, tipo) {
   pred <- augment(modelo, newdata = datos)
@@ -1284,8 +1173,8 @@ ggplot(df_metricas %>% filter(metrica == "rmse"),
   geom_col(position = "dodge") +
   geom_text(aes(label = scales::comma(valor)), 
             position = position_dodge(width = 0.9),
-            hjust = 1,  # Texto dentro das barras
-            color = "black",  # Texto em preto
+            hjust = 1,
+            color = "black",
             size = 3) +
   labs(title = "Comparación de RMSE por Modelo",
        x = "RMSE",
@@ -1323,6 +1212,10 @@ ggplot(df_metricas %>% filter(metrica == "rsq"),
        fill = "Conjunto de datos") +
   scale_fill_manual(values = c("Entrenamiento" = "#FFB6C1", "Prueba" = "#8B0000"))
 ```
+
+- El MAE de todos los modelos robustos es menor que el de los modelos clásicos
+- El modelo que utiliza la función $\rho$ optimal tiene le menor MAE, siendo el de mejor desempeño. Esto es posible ya ya que la funcion optimal es apropiada para datos donde los outliers no son muy pronunciados, que parece ser el caso del precio de los jugadores.
+
 
 # Conclusiones
 
